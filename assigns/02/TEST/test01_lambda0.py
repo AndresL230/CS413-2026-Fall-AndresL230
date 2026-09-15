@@ -115,6 +115,28 @@ class TestCBVEvaluate(unittest.TestCase):
                     T0Mint(expected),
                 )
 
+    def test_fix_fibonacci(self):
+        # fib(0) = 0, fib(1) = 1, fib(n) = fib(n-1) + fib(n-2).
+        n = T0Mvar("n")
+        fib = T0Mfix("fib", "n", T0Mif0(
+            T0Mop2("<=", n, T0Mint(1)),
+            n,
+            T0Mop2("+",
+                T0Mapp(T0Mvar("fib"), T0Mop2("-", n, T0Mint(1))),
+                T0Mapp(T0Mvar("fib"), T0Mop2("-", n, T0Mint(2))),
+            ),
+        ))
+        for argument, expected in [(0, 0), (1, 1), (2, 1), (3, 2), (5, 5), (10, 55)]:
+            with self.subTest(n=argument):
+                term = T0Mapp(fib, T0Mint(argument))
+                self.assertEqual(t0erm_cbv_evaluate0(term), T0Mint(expected))
+
+    def test_integer_less_equal(self):
+        for left, right, expected in [(0, 1, True), (1, 1, True), (2, 1, False), (-2, -1, True)]:
+            with self.subTest(left=left, right=right):
+                term = T0Mop2("<=", T0Mint(left), T0Mint(right))
+                self.assertEqual(t0erm_cbv_evaluate0(term), T0Mbtf(expected))
+
     def test_fix_evaluates_unused_argument(self):
         term = T0Mapp(
             T0Mfix("f", "x", T0Mint(42)),
@@ -155,7 +177,7 @@ class TestCBVEvaluate(unittest.TestCase):
                 with self.subTest(op=op, value=value):
                     with self.assertRaises(TypeError):
                         t0erm_cbv_evaluate0(T0Mop1(op, value))
-            for op in ("+", "-", "*", "/", "%"):
+            for op in ("+", "-", "*", "/", "%", "<="):
                 for left, right in [(value, T0Mint(2)), (T0Mint(2), value)]:
                     with self.subTest(op=op, left=left, right=right):
                         with self.assertRaises(TypeError):

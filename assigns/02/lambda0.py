@@ -254,6 +254,24 @@ def t0erm_cbv_evaluate0(term: t0erm) -> t0erm:
                     return T0Mint(t1.arg1 // t2.arg1)
             else:
                 raise TypeError(f"t0erm_cbv_evaluate0: {term.arg1} expects integers ({t1}, {t2})")
+        elif term.arg1 in ("<", ">", "<=", ">=", "==", "!="):
+            t1 = t0erm_cbv_evaluate0(term.arg2)
+            t2 = t0erm_cbv_evaluate0(term.arg3)
+            if isinstance(t1, T0Mint) and isinstance(t2, T0Mint):
+                if term.arg1 == "<":
+                    return T0Mbtf(t1.arg1 < t2.arg1)
+                elif term.arg1 == ">":
+                    return T0Mbtf(t1.arg1 > t2.arg1)
+                elif term.arg1 == "<=":
+                    return T0Mbtf(t1.arg1 <= t2.arg1)
+                elif term.arg1 == ">=":
+                    return T0Mbtf(t1.arg1 >= t2.arg1)
+                elif term.arg1 == "==":
+                    return T0Mbtf(t1.arg1 == t2.arg1)
+                else: # term.arg1 == "!="
+                    return T0Mbtf(t1.arg1 != t2.arg1)
+            else:
+                raise TypeError(f"t0erm_cbv_evaluate0: {term.arg1} expects integers ({t1}, {t2})")
         else:
             raise TypeError(f"t0erm_cbv_evaluate0({term})")
     else:
