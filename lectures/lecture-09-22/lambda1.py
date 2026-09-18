@@ -81,6 +81,22 @@ class D0Eif0(D0E000):
     ctag = "D0Eif0"
 ########################################################################
 @dataclass
+class D0Epair(D0E000):
+    arg1: d0exp
+    arg2: d0exp
+    ctag = "D0Epair"
+########################################################################
+@dataclass
+class D0Epfst(D0E000):
+    arg1: d0exp
+    ctag = "D0Epfst"
+########################################################################
+@dataclass
+class D0Epsnd(D0E000):
+    arg1: d0exp
+    ctag = "D0Epsnd"
+########################################################################
+@dataclass
 class D0V000(ABC):
     ctag = "D0V000"
     pass
@@ -123,6 +139,12 @@ class D0Vint(D0V000):
 class D0Vbtf(D0V000):
     arg1: bool
     ctag = "D0Vbtf"
+########################################################################
+@dataclass
+class D0Vpair(D0V000):
+    arg1: d0val
+    arg2: d0val
+    ctag = "D0Vpair"
 ########################################################################
 @dataclass
 class D0Vlam(D0V000):
@@ -271,6 +293,21 @@ def d0exp_evaluate\
         return D0Vlam(denv, dexp)
     elif isinstance(dexp, D0Efix):
         return D0Vfix(denv, dexp)
+    elif isinstance(dexp, D0Epair):
+        # Call-by-value: evaluate both components, from left to right.
+        dval1 = d0exp_evaluate(dexp.arg1, denv)
+        dval2 = d0exp_evaluate(dexp.arg2, denv)
+        return D0Vpair(dval1, dval2)
+    elif isinstance(dexp, D0Epfst):
+        dpair = d0exp_evaluate(dexp.arg1, denv)
+        if not isinstance(dpair, D0Vpair):
+            raise TypeError(f"D0Vpair(...) expected: {dpair}")
+        return dpair.arg1
+    elif isinstance(dexp, D0Epsnd):
+        dpair = d0exp_evaluate(dexp.arg1, denv)
+        if not isinstance(dpair, D0Vpair):
+            raise TypeError(f"D0Vpair(...) expected: {dpair}")
+        return dpair.arg2
     elif isinstance(dexp, D0Eif0): return f0_D0Eif0(dexp)
     elif isinstance(dexp, D0Eop1): return f0_D0Eop1(dexp)
     elif isinstance(dexp, D0Eop2): return f0_D0Eop2(dexp)

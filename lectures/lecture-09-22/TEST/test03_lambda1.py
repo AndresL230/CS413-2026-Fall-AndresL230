@@ -12,6 +12,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from lambda1 import (
     D0E000, D0Eint, D0Ebtf, D0Evar, D0Elam, D0Efix, D0Eapp,
     D0Eif0, D0Eop1, D0Eop2, D0V000, D0Vint, D0Vbtf, D0Vlam,
+    D0Epair, D0Epfst, D0Epsnd, D0Vpair,
     D0Vfix, ENVnil, ENVcns, d0env_search, d0exp_evaluate,
 )
 
@@ -181,6 +182,73 @@ class TestLambda1(unittest.TestCase):
             with self.subTest(function=term):
                 with self.assertRaises(TypeError):
                     d0exp_evaluate(D0Eapp(term, D0Eint(2)))
+
+
+class TestLambda1Pairs(unittest.TestCase):
+    def test_pair_components_evaluate_in_current_environment(self):
+        term = let('x', D0Eint(4), D0Epair(
+            D0Eop1('+1', D0Evar('x')),
+            D0Eop2('==', D0Evar('x'), D0Eint(4))))
+        self.assertEqual(d0exp_evaluate(term), D0Vpair(D0Vint(5), D0Vbtf(True)))
+
+    def test_projections_of_computed_pair(self):
+        pair = D0Eapp(D0Elam('x', D0Epair(D0Evar('x'), D0Ebtf(False))),
+                      D0Eint(7))
+        for projection, expected in [(D0Epfst, D0Vint(7)), (D0Epsnd, D0Vbtf(False))]:
+            with self.subTest(projection=projection):
+                term = let('p', pair, projection(D0Evar('p')))
+                self.assertEqual(d0exp_evaluate(term), expected)
+
+    def test_nested_pairs(self):
+        pair = D0Epair(D0Eint(1), D0Epair(D0Eint(2), D0Eint(3)))
+        self.assertEqual(d0exp_evaluate(pair),
+                         D0Vpair(D0Vint(1), D0Vpair(D0Vint(2), D0Vint(3))))
+        self.assertEqual(d0exp_evaluate(D0Epfst(D0Epsnd(pair))), D0Vint(2))
+        self.assertEqual(d0exp_evaluate(D0Epsnd(D0Epsnd(pair))), D0Vint(3))
+
+    def test_projected_closures_preserve_lexical_scope(self):
+        for function in [D0Elam('y', D0Eop2('+', D0Evar('x'), D0Evar('y'))),
+                         D0Efix('f', 'y', D0Eif0(
+                             D0Eop2('<=', D0Evar('y'), D0Eint(0)), D0Evar('x'),
+                             D0Eapp(D0Evar('f'), D0Eop1('-1', D0Evar('y')))))]:
+            for projection in (D0Epfst, D0Epsnd):
+                with self.subTest(function=function, projection=projection):
+                    term = let('x', D0Eint(10),
+                        let('p', D0Epair(function, function),
+                            let('x', D0Eint(100),
+                                D0Eapp(projection(D0Evar('p')), D0Eint(2)))))
+                    expected = 12 if isinstance(function, D0Elam) else 10
+                    self.assertEqual(d0exp_evaluate(term), D0Vint(expected))
+
+    def test_pair_evaluates_left_before_right(self):
+        term = D0Epair(divide_by_zero(), D0Eop1('+1', D0Ebtf(True)))
+        with self.assertRaises(ZeroDivisionError):
+            d0exp_evaluate(term)
+
+    def test_projection_evaluates_both_components(self):
+        # Even the component discarded by a projection must be evaluated.
+        for projection in (D0Epfst, D0Epsnd):
+            for pair in [D0Epair(D0Eint(1), divide_by_zero()),
+                         D0Epair(divide_by_zero(), D0Eint(2))]:
+                with self.subTest(projection=projection, pair=pair):
+                    with self.assertRaises(ZeroDivisionError):
+                        d0exp_evaluate(projection(pair))
+
+    def test_projection_requires_pair(self):
+        for projection in (D0Epfst, D0Epsnd):
+            for term in [D0Eint(1), D0Ebtf(True), D0Elam('x', D0Evar('x')),
+                         D0Efix('f', 'x', D0Evar('x')), D0Evar('missing')]:
+                with self.subTest(projection=projection, term=term):
+                    with self.assertRaises(TypeError):
+                        d0exp_evaluate(projection(term))
+
+    def test_pair_is_not_integer_boolean_or_function(self):
+        pair = D0Epair(D0Eint(1), D0Eint(2))
+        for term in [D0Eop1('+1', pair), D0Eop2('+', pair, D0Eint(1)),
+                     D0Eif0(pair, D0Eint(1), D0Eint(2)), D0Eapp(pair, D0Eint(0))]:
+            with self.subTest(term=term):
+                with self.assertRaises(TypeError):
+                    d0exp_evaluate(term)
 
 
 if __name__ == '__main__':
