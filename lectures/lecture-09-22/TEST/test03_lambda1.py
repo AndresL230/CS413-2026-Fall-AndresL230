@@ -11,15 +11,15 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from lambda1 import (
     D0E000, D0Eint, D0Ebtf, D0Evar, D0Elam, D0Efix, D0Eapp,
-    D0Eif0, D0Eop1, D0Eop2, D0V000, D0Vint, D0Vbtf, D0Vlam,
+    D0Eif0, D0Elet, D0Eop1, D0Eop2, D0V000, D0Vint, D0Vbtf, D0Vlam,
     D0Epair, D0Epfst, D0Epsnd, D0Vpair,
     D0Vfix, ENVnil, ENVcns, d0env_search, d0exp_evaluate,
 )
 
 
 def let(name, value, body):
-    """Encode let name = value in body using lambda application."""
-    return D0Eapp(D0Elam(name, body), value)
+    """Construct let name = value in body."""
+    return D0Elet(name, value, body)
 
 
 def divide_by_zero():
@@ -123,6 +123,19 @@ class TestLambda1(unittest.TestCase):
             let('x', D0Eint(100), D0Eapp(D0Evar('f'), D0Eint(2)))))
         self.assertEqual(d0exp_evaluate(term), D0Vint(12))
 
+    def test_let_initializer_uses_outer_binding_and_scope_is_local(self):
+        env = ENVcns('x', D0Vint(10), ENVnil())
+        term = D0Epair(
+            let('x', D0Eop1('+1', D0Evar('x')), D0Evar('x')),
+            D0Evar('x'))
+        self.assertEqual(d0exp_evaluate(term, env),
+                         D0Vpair(D0Vint(11), D0Vint(10)))
+
+    def test_unused_let_initializer_evaluated_before_body(self):
+        term = let('x', divide_by_zero(), D0Eop1('+1', D0Ebtf(True)))
+        with self.assertRaises(ZeroDivisionError):
+            d0exp_evaluate(term)
+
     def test_independent_closures(self):
         make = D0Elam('x', D0Elam('y', D0Evar('x')))
         term = let('make', make, let('a', D0Eapp(D0Evar('make'), D0Eint(10)),
@@ -149,6 +162,25 @@ class TestLambda1(unittest.TestCase):
             D0Eop2('*', D0Evar('n'),
                 D0Eapp(D0Evar('f'), D0Eop1('-1', D0Evar('n'))))))
         for n, expected in [(0, 1), (1, 1), (5, 120), (7, 5040)]:
+            with self.subTest(n=n):
+                self.assertEqual(d0exp_evaluate(D0Eapp(factorial, D0Eint(n))),
+                                 D0Vint(expected))
+
+    def test_tail_recursive_factorial(self):
+        # loop(n, acc) = acc if n <= 1 else loop(n - 1, n * acc).
+        # Pass both arguments as a pair; use let to name its components.
+        loop = D0Efix('loop', 'state',
+            D0Elet('n', D0Epfst(D0Evar('state')),
+                D0Elet('acc', D0Epsnd(D0Evar('state')),
+                    D0Eif0(
+                        D0Eop2('<=', D0Evar('n'), D0Eint(1)),
+                        D0Evar('acc'),
+                        D0Eapp(D0Evar('loop'), D0Epair(
+                            D0Eop1('-1', D0Evar('n')),
+                            D0Eop2('*', D0Evar('n'), D0Evar('acc'))))))))
+        factorial = D0Elam('n', D0Elet('loop', loop,
+            D0Eapp(D0Evar('loop'), D0Epair(D0Evar('n'), D0Eint(1)))))
+        for n, expected in [(0, 1), (1, 1), (5, 120), (7, 5040), (10, 3628800)]:
             with self.subTest(n=n):
                 self.assertEqual(d0exp_evaluate(D0Eapp(factorial, D0Eint(n))),
                                  D0Vint(expected))

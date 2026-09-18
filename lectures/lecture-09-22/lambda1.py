@@ -15,6 +15,7 @@ from dataclasses import dataclass
 from typing import \
     Generic, TypeVar, Callable
 ########################################################################
+########################################################################
 @dataclass
 class D0E000(ABC):
     ctag = "D0E000"
@@ -81,6 +82,13 @@ class D0Eif0(D0E000):
     ctag = "D0Eif0"
 ########################################################################
 @dataclass
+class D0Elet(D0E000):
+    arg1: dvar
+    arg2: d0exp
+    arg3: d0exp
+    ctag = "D0Elet"
+########################################################################
+@dataclass
 class D0Epair(D0E000):
     arg1: d0exp
     arg2: d0exp
@@ -119,17 +127,6 @@ class ENVcns(ENV000):
     arg3: d0env
     ctag = "ENVcns"
 ########################################################################
-def d0env_search(denv: d0env, dvar: dvar) -> d0val:
-    while True:
-        if isinstance(denv, ENVcns):
-            if dvar == denv.arg1:
-                return denv.arg2
-            else:
-                denv = denv.arg3; continue
-        else:
-            return D0V000() # HX: this indicates an error
-    # end-of-(while True)
-########################################################################
 @dataclass
 class D0Vint(D0V000):
     arg1: sint
@@ -158,6 +155,22 @@ class D0Vfix(D0V000):
     arg2: D0Efix
     ctag = "D0Vfix"
 ########################################################################
+########################################################################
+#
+def d0env_search(denv: d0env, dvar: dvar) -> d0val:
+    while True:
+        if isinstance(denv, ENVcns):
+            if dvar == denv.arg1:
+                return denv.arg2
+            else:
+                denv = denv.arg3; continue
+        else:
+            return D0V000() # HX: this indicates an error
+    # end-of-(while True)
+#
+########################################################################
+########################################################################
+#
 def d0exp_evaluate\
 (dexp: d0exp, denv: d0env = ENVnil()) -> d0val:
     """
@@ -172,6 +185,12 @@ def d0exp_evaluate\
             return d0exp_evaluate(dexp.arg2, denv)
         else:
             return d0exp_evaluate(dexp.arg3, denv)
+######
+    def f0_D0Elet(dexp: D0Elet) -> d0val:
+        # let x = value in body: evaluate value before binding x.
+        dval = d0exp_evaluate(dexp.arg2, denv)
+        denv_new = ENVcns(dexp.arg1, dval, denv)
+        return d0exp_evaluate(dexp.arg3, denv_new)
 ######
     def f0_D0Eop1(dexp: D0Eop1) -> d0val:
         name = dexp.name
@@ -293,6 +312,12 @@ def d0exp_evaluate\
         return D0Vlam(denv, dexp)
     elif isinstance(dexp, D0Efix):
         return D0Vfix(denv, dexp)
+    elif isinstance(dexp, D0Eif0): return f0_D0Eif0(dexp)
+    elif isinstance(dexp, D0Elet): return f0_D0Elet(dexp)
+    elif isinstance(dexp, D0Eop1): return f0_D0Eop1(dexp)
+    elif isinstance(dexp, D0Eop2): return f0_D0Eop2(dexp)
+    elif isinstance(dexp, D0Evar): return f0_D0Evar(dexp)
+    elif isinstance(dexp, D0Eapp): return f0_D0Eapp(dexp)
     elif isinstance(dexp, D0Epair):
         # Call-by-value: evaluate both components, from left to right.
         dval1 = d0exp_evaluate(dexp.arg1, denv)
@@ -308,14 +333,8 @@ def d0exp_evaluate\
         if not isinstance(dpair, D0Vpair):
             raise TypeError(f"D0Vpair(...) expected: {dpair}")
         return dpair.arg2
-    elif isinstance(dexp, D0Eif0): return f0_D0Eif0(dexp)
-    elif isinstance(dexp, D0Eop1): return f0_D0Eop1(dexp)
-    elif isinstance(dexp, D0Eop2): return f0_D0Eop2(dexp)
-    elif isinstance(dexp, D0Evar): return f0_D0Evar(dexp)
-    elif isinstance(dexp, D0Eapp): return f0_D0Eapp(dexp)
     else:
         raise TypeError(f"d0exp_evaluate({dexp})")
-
+#
 ########################################################################
 ########################################################################
-
