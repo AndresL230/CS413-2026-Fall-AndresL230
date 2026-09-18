@@ -42,9 +42,23 @@ allows, so these functions are written as loops here. They take the
 same parameters and go through the same sequence of states.
 """
 
+import signal
 import sys
 
 N = 8  # HX: this should not be changed!
+
+
+def assertloc(cond):
+    """ATS's assertloc: if cond is false, print where the check is and exit with code 1.
+
+    Like ATS, it prints only the location, with no newline. Unlike an assert
+    statement, it is not removed by `python -O`.
+    """
+    if not cond:
+        caller = sys._getframe(1)
+        sys.stdout.flush()
+        sys.stderr.write(f"{caller.f_code.co_filename}: line {caller.f_lineno}")
+        sys.exit(1)
 
 
 def print_dots(i):
@@ -150,13 +164,13 @@ def main0():
 
     nsol = search((0, 0, 0, 0, 0, 0, 0, 0), 0, 0, 0)
 
-    # assertloc (nsol = 92): if it fails, report on stderr and exit(1).
-    # This is an explicit check so that `python -O` does not remove it.
-    if not (nsol == 92):
-        sys.stdout.flush()
-        sys.stderr.write("exit(ATS): [assertloc] failed: queens.py: nsol = 92\n")
-        sys.exit(1)
+    assertloc(nsol == 92)
 
 
 if __name__ == "__main__":
+    # Like the compiled ATS program, stop quietly when the reader of the output
+    # goes away (e.g. `| head`), instead of printing a BrokenPipeError traceback.
+    # Done here, not at import, so importing this file changes no signal handling.
+    if hasattr(signal, "SIGPIPE"):
+        signal.signal(signal.SIGPIPE, signal.SIG_DFL)
     main0()

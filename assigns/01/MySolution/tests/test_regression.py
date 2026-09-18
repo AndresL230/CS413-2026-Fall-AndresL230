@@ -11,6 +11,8 @@ so that such invisible differences can be seen.
 """
 
 import difflib
+import os
+import signal
 import subprocess
 import sys
 import unittest
@@ -95,12 +97,15 @@ def describe_case_mismatch(expected, actual):
 
 
 class RegressionTest(unittest.TestCase):
-    """Each test runs one Python program and compares its stdout with the ATS output."""
+    """Each test runs one Python program and compares its behavior with the ATS original's."""
+
+    def require_translation(self):
+        if not TRANSLATION.exists():
+            self.fail(f"translation not found: {TRANSLATION.relative_to(ROOT)} does not exist")
 
     def run_program(self, script):
         """Run a Python program and return its stdout bytes; fail the test if it crashes."""
-        if not TRANSLATION.exists():
-            self.fail(f"translation not found: {TRANSLATION.relative_to(ROOT)} does not exist")
+        self.require_translation()
         name = script.relative_to(ROOT)
         try:
             proc = subprocess.run([sys.executable, str(script)], cwd=ROOT,
@@ -131,6 +136,41 @@ class RegressionTest(unittest.TestCase):
         expected = (EXPECTED / "cases.out").read_bytes()
         if actual != expected:
             self.fail(describe_case_mismatch(expected, actual))
+
+    # The two tests below cover paths the normal run never takes. What the ATS
+    # original does on these paths was checked by hand (see TESTING.md).
+
+    def test_failed_count_check(self):
+        """If the count is not 92, it prints everything, then only a location on stderr, and exits 1."""
+        self.require_translation()
+        # The count is always 92, so make search report one fewer, then run main0.
+        code = ("import sys; sys.path.insert(0, 'translation'); import queens; "
+                "real = queens.search; queens.search = lambda *args: real(*args) - 1; "
+                "queens.main0()")
+        proc = subprocess.run([sys.executable, "-c", code], cwd=ROOT,
+                              capture_output=True, timeout=TIMEOUT)
+        stderr = proc.stderr.decode("latin-1")
+        self.assertEqual(proc.returncode, 1, stderr)
+        self.assertEqual(proc.stdout, (EXPECTED / "queens.out").read_bytes(),
+                         "stdout before the failed check should be the normal output")
+        # ATS's assertloc prints just the location of the check, with no newline.
+        self.assertRegex(stderr, r"\A[^\n]*queens\.py: line \d+\Z")
+
+    @unittest.skipUnless(hasattr(signal, "SIGPIPE"), "needs POSIX signals")
+    def test_closed_output_pipe(self):
+        """If nobody reads its output, it is stopped by SIGPIPE and prints no error, like ATS."""
+        self.require_translation()
+        read_end, write_end = os.pipe()
+        os.close(read_end)  # closed before the program starts, so its first write fails
+        try:
+            proc = subprocess.run([sys.executable, str(TRANSLATION)], cwd=ROOT, stdout=write_end,
+                                  stderr=subprocess.PIPE, timeout=TIMEOUT)
+        finally:
+            os.close(write_end)
+        stderr = proc.stderr.decode("latin-1")
+        self.assertEqual(proc.returncode, -signal.SIGPIPE,
+                         f"expected to be stopped by SIGPIPE; stderr:\n{stderr[-2000:]}")
+        self.assertEqual(stderr, "")
 
 
 if __name__ == "__main__":
