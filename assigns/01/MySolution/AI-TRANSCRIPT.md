@@ -19,7 +19,7 @@
 > is and does, keep one directory for the original source program and create another one for
 > ours to keep them seperated
 
-**Follow-up: commit and testing strategy**
+**Follow-up: testing strategy**
 
 > yes, add it and help me figure out a testing framework that this may or may not have and to
 > see if we can somehow use or create a testing framework to ensure no regression between this
@@ -43,8 +43,7 @@
 
 1. **Got the complete source, not just the book's code excerpts.** The book section shows
    the code in pieces; it links to the full file `CODE/CHAP_FUNCTION/queens.dats` (193 lines),
-   which also has `main0`. That file was saved unmodified as `original/queens.dats` and committed
-   (`85a2bcd Add original source program`).
+   which also has `main0`. That file was saved unmodified as `original/queens.dats`.
    - Difference noticed: `board_get` falls back to `~1` (−1) in the book, but `0` in the file.
    - `main0` prints a demo board `(0,1,2,3,4,5,6,7)`, runs `search`, then `assertloc(nsol = 92)`.
 
@@ -53,25 +52,20 @@
    Python has `unittest` in the standard library; `pytest` is not installed. The only thing the
    two languages share is stdout, so the regression check has to compare printed output.
 
-3. **ATS2 was not installed, so the AI built it locally** (`~/.local/opt/ATS2-Postiats-gmp-0.4.2`):
-   - The AUR checksum did **not** match the SourceForge download. The AI's script also did not
-     stop on that failure and extracted the archive anyway, so the AI flagged this and checked the
-     file before building: it matched SourceForge's published MD5
-     (`930e9e11c05cde2f1041a3c58c6efb9d`, re-uploaded 2021-06-01), which is newer than the AUR
-     checksum.
-   - First build **failed** with GCC 16 (`implicit declaration of function` became an error).
-     Fixed by building through a temporary `gcc` wrapper that adds `-std=gnu17 -fpermissive`.
-   - `patsopt` and `patscc` built; the optional `myatscc` tool still fails (glibc's `bsearch`
-     macro). It is not needed.
+3. **ATS2 was not installed, so the AI built it locally**, the way the user asked (no root).
+   Two snags, both written up in `README.md`: a checksum that didn't match the download, and a
+   build failure under GCC 16. **AI mistake:** its install script did not stop when the checksum
+   failed and unpacked the archive anyway. The AI flagged that and verified the file separately
+   before building.
 
 4. **Ran the original.** `patscc -DATS_MEMALLOC_LIBC -o queens queens.dats && ./queens`:
-   exit 0, 1021 lines, 92 solutions, first solution matches the book.
-   SHA-256 of the output: `a1941fc45db2e56714d733bc3ab14999952dbf98b80b4ad7dc83b1e96c654359`.
-   Every board row ends in a **trailing space** (`"Q . . . . . . . "`).
+   exit 0, 1021 lines, 92 solutions, first solution matches the book. Every board row ends in a
+   **trailing space** (`"Q . . . . . . . "`), which later turned out to be the detail a Python
+   translation is most likely to lose.
 
-5. **Options proposed:** (A) whole-program output comparison only, (B) whole-program output plus
-   a per-function comparison against an ATS test program, (C) Python-only brute-force check.
-   The user chose **B**.
+5. **Options proposed, user chose.** (A) whole-program output comparison only, (B) whole-program
+   output plus a per-function comparison against an ATS test program, (C) Python-only brute-force
+   check. The user chose **B**, and every later decision was built on that choice.
 
 6. **Throwaway probes found behaviors a translation could get wrong:**
    - A test program can `#include` a copy of `queens.dats` with `main0` removed, so the original
@@ -118,9 +112,9 @@ None yet (no translation exists yet).
    that same directory. The first probe failed with `the file [../../build/queens_lib.dats] is
    not available for inclusion`. So the Makefile compiles both ATS programs from inside `build/`.
 
-4. **Built the harness** (see `TESTING.md`): `Makefile`, `.gitignore`, `tests/ats/cases.dats`,
-   `tests/py/cases.py`, `tests/test_regression.py`, and the saved ATS output in
-   `tests/expected/`. Each case's `###` header is generated from the real arguments in both
+4. **Built the harness** the user had approved (see `TESTING.md`): `Makefile`,
+   `tests/ats/cases.dats`, `tests/py/cases.py`, `tests/test_regression.py`, and the saved ATS
+   output in `tests/expected/`. Each case's `###` header is generated from the real arguments in both
    languages, so a header can't disagree with the call it describes.
 
 5. **Checked the ATS output against the approved table.** Every value matched, and
@@ -177,7 +171,7 @@ Opus 5, no memory of this session). That subagent was told not to open any files
 >
 > The original program, queens.dats: *(the full 193-line file)*
 
-The function names and the `__main__` guard were added to your wording because the test programs
+The function names and the `__main__` guard were added to the user's wording because the test programs
 import the translation and call its functions.
 
 ### What the AI did and found
@@ -203,7 +197,8 @@ import the translation and call its functions.
      The draft printed a `BrokenPipeError` traceback and exited with code 120, because Python
      ignores SIGPIPE by default.
 
-4. **Tests first, then fixes.** The AI added tests 3 and 4 to `tests/test_regression.py`, ran them
+4. **Tests first, then fixes**, following the user's instruction to test with the suite while
+   building. The AI added tests 3 and 4 to `tests/test_regression.py`, ran them
    on the unedited draft, and both failed for the reasons above. Only then was the translation
    changed. **AI mistake caught before it mattered:** the first version of test 3 matched the
    file path with `\S*`, which would have rejected this repository's path because it contains
@@ -215,7 +210,10 @@ import the translation and call its functions.
 
 ### Corrections made after reviewing the AI output
 
-The reviewing AI made these at your request; you didn't edit any code by hand:
+These came out of the direction the user set for this step: make the translation mimic everything
+the original does, and test it against the suite while building it. Working to that instruction,
+the AI reported each difference it found and then made the change; the user decided what the
+translation had to match and did not hand-edit code.
 
 1. Added an `assertloc(cond)` helper that works like ATS's: it prints the caller's file and line
    with no newline, exits with code 1, and isn't removed by `python -O`. `main0` now ends with
