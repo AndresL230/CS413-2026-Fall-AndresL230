@@ -1,51 +1,52 @@
 # AI-assisted development log: Assignment 2
 
-Tool: Claude Code (Claude Opus 5.5), in one session on 2026-09-22.
-Below are my prompts, paraphrased, in order, with what the AI did and what
-I decided. I made the decisions; the AI proposed options, ran commands and
-wrote the drafts.
+Tool: Claude Code (Claude Opus 5.5), 2026-09-22. These are my prompts while
+working on the solution, in order. For each one: what I asked for, why, and
+what came of it.
 
-## 1. Setup and orientation
-- **Me:** Fetch from the remote and give me a rundown of the assignment.
-- **AI:** Fetched from both remotes. It found 4 new upstream commits and
-  summarized the spec into Part A (pairs) and Part B (queens). It also
-  flagged likely problems: Python's recursion limit, speed, and printing.
-- **Me:** Merge upstream "for good practice" and start. The AI merged.
+## 1. "Orient me on what it says on the README … so I know how to go about this"
+Before any Part B code was written, I wanted to know what the finished
+submission had to show: the ATS-to-LAMBDA0 mapping, the run commands, the
+comparison with the original program, the call-by-value changes and
+limitations, and how I checked the AI's work. I asked first so the plan
+would be built around those requirements instead of patched afterwards.
 
-## 2. Part A: pairs and projections
-- The AI copied `lambda0.py` and the starter tests into `MySolution/`. It
-  added the pair and projection cases to `t0erm_size`, `t0erm_fvset`,
-  `t0erm_subst0` and `t0erm_cbv_evaluate0`, and wrote `test02_lambda0.py`.
-- **Check:** 57/57 tests pass. Against the unmodified starter, 26 of the 27
-  new tests fail, which shows they really test the new code.
+## 2. "Help me understand this well … present to me the issues first"
+I asked for the risks before any translation code existed, so I could make
+the design decisions myself. What came back, measured rather than assumed:
+- **Recursion depth.** The ATS search makes 17,685 calls. The interpreter
+  has no tail calls, so Python's default recursion limit of 1,000 is not
+  enough.
+- **Substitution cost.** Every function call copies the function body.
+- **Missing features.** LAMBDA0 has no `let`, `abs`, `andalso` or
+  multi-argument functions, so each has to be encoded.
+- **Closed terms.** The whole program has to be one term with no free
+  variables.
+- **Call-by-value.** Arguments are always evaluated first, so anything
+  conditional has to go inside an `if` branch.
+- **Two decisions for me:** what the term returns, and whether N is fixed.
 
-## 3. Understanding before Part B
-- **Me:** Explain what the README must contain, so I know how to approach
-  this. The AI listed the README requirements from the spec.
-- **Me:** Show me the problems first, so I understand this well.
-- **AI:** Measured instead of guessing. The ATS search makes 17,685 calls.
-  With the default recursion limit, a 1,000-step loop fails, and raising
-  the limit fixes it. It listed the encoding problems (no `let`, no `abs`,
-  no `and`, the term must be closed, call-by-value) and gave me two
-  decisions.
-- **Me:** Chose the recommended design: return every solution rather than
-  just a count, make N a parameter so smaller boards can be tested, and use
-  curried arguments.
+## 3. "Let's go with that recommendation"
+My design decisions:
+- **Enumerate every solution** instead of only counting. The ATS program
+  both counts and prints each solution, and the spec says to preserve that.
+  Returning every board also lets every board be checked.
+- **Make N a parameter**, so the smaller boards the spec asks about can be
+  tested, while the driver still uses N = 8 like the original.
+- **Curried arguments**, so the code reads like the ATS functions.
 
-## 4. Part B: translation
-- The AI wrote `queens_lambda0.py`: each ATS function as a closed term, all
-  chained together with `let` into one closed program.
-- First version: correct (92 solutions) but it took 104 seconds for N = 8.
-  Profiling showed about 88% of the time was in `t0erm_subst0`.
-- The AI tried passing arguments as one tuple. Every count was still
-  correct, but it was about 5 times slower (548 seconds), because the
-  interpreter re-evaluates a whole pair every time a parameter is read from
-  it. It reverted to curried arguments and wrote the reason in the README.
-- It was close to the deadline, so we stopped optimizing and finished the
-  deliverables: `test03_queens.py`, the README, and a copy of the ATS source.
+Result: 92 solutions, identical in order to the compiled ATS output.
+Passing arguments as one tuple was tried for speed; it was 5 times slower,
+so it was reverted with the measurements recorded in the README.
 
-## 5. Verification
-- The full suite passes: 66 tests in about 70 seconds.
-- The translation's 92 boards are identical to the output of the compiled
-  ATS program from Assignment 1, in the same order.
-- **Me:** Asked for clear commit messages and for this log.
+## 4. "Make sure we got all the comments … proper commit messages … fill out the transcript"
+Before submitting, I asked for the code comments to be checked, for the work
+to be split into one commit per part (Part A, Part B, documentation), and
+for this log.
+
+## My understanding
+<!-- TODO (Andres): in your own words, a few sentences on:
+     - why pairs let the int8 board and the solution list be built in LAMBDA0
+     - why search needs a raised recursion limit (no tail calls)
+     - why the tuple-argument version was slower (a pair is re-evaluated
+       every time a parameter is read from it) -->
