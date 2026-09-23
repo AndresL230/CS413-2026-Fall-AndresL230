@@ -1,19 +1,22 @@
-"""Per-function test cases for the Python translation (translation/queens.py).
+"""My Python side of the function-by-function test.
 
-This mirrors tests/ats/cases.dats: for the same inputs it must print exactly
-the same bytes, which tests/test_regression.py compares with
-tests/expected/cases.out. See TESTING.md for what each case checks.
+This is the twin of tests/ats/cases.dats. Same inputs, same printing, so the
+two outputs can be compared byte for byte (tests/test_regression.py does the
+comparing, against tests/expected/cases.out). TESTING.md says what each case
+checks and why.
 
-Every case prints:
+Each case prints:
     ### <id> <call>
     <whatever the function printed>
     => <return value>
-The header is built from the real arguments, and the function is called in
-its own statement before its result is printed, so anything it prints comes
-before the "=>" line, as in the ATS version.
 
-A return value of the wrong type is printed as "<not a ...: value>" so it
-can never match the ATS output by accident.
+I build the header out of the real arguments, so it can't end up describing a
+different call than the one I make. I also call the function on its own line
+before printing anything about the result, because ATS and Python don't run
+the arguments of a print in the same order.
+
+If a function hands back the wrong type I print "<not a ...: value>", so a
+wrong type can't quietly look correct.
 """
 
 import os
@@ -24,6 +27,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."
 import queens  # noqa: E402
 
 
+# How I print each kind of return value, to match what the ATS side prints.
 def show_int(v):
     return str(v) if type(v) is int else f"<not an int: {v!r}>"
 
@@ -98,6 +102,7 @@ def main():
     sol1 = (0, 4, 7, 5, 2, 6, 1, 3)  # Solution #1
     zeros = (0, 0, 0, 0, 0, 0, 0, 0)
 
+    # printing
     case_print_dots("P1", 0)
     case_print_dots("P2", 3)
     case_print_dots("P3", -3)
@@ -105,6 +110,7 @@ def main():
     case_print_row("P5", 7)
     case_print_board("P6", sol1)
 
+    # reading and writing a board, including rows that don't exist
     for i in range(8):
         case_board_get(f"G1.{i}", sol1, i)
     case_board_get("G2", sol1, 8)
@@ -115,6 +121,7 @@ def main():
     case_board_set("S3", sol1, 8, 5)
     case_board_set("S4", sol1, -1, 5)
 
+    # are two queens safe from each other, and is a queen safe from the rows above
     case_safety_test1("T1", 0, 0, 1, 2)
     case_safety_test1("T2", 0, 3, 5, 3)
     case_safety_test1("T3", 2, 2, 5, 5)
@@ -124,6 +131,7 @@ def main():
     case_safety_test2("T7", 3, 4, sol1, 2)
     case_safety_test2("T8", 0, 5, zeros, -1)
 
+    # the search itself; R5 counts the solutions from each starting column
     case_search("R2", zeros, 0, 8, 0)
     case_search("R3", zeros, 0, 7, 10)
     case_search("R4", zeros, 1, 0, 0)

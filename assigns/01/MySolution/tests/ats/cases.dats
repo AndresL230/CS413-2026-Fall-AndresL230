@@ -1,17 +1,19 @@
 (*
-** Per-function test cases for original/queens.dats.
+** My ATS side of the function-by-function test: the original's own functions,
+** run on the cases in TESTING.md.
 **
-** `make expected` compiles this from inside build/, where queens_lib.dats is
-** a copy of the original with main0 removed, and saves the output as
+** `make expected` compiles this from inside build/, where queens_lib.dats is the
+** original with main0 removed, and saves what it prints as
 ** tests/expected/cases.out. tests/py/cases.py prints the same lines for the
-** Python translation. See TESTING.md for what each case checks.
+** Python translation, and the two are compared byte for byte.
 **
-** Every case prints:
+** Each case prints:
 **   ### <id> <call, written in Python syntax>
 **   <whatever the function printed>
 **   => <return value>
-** The header is built from the real arguments, and the function is called in
-** its own statement before its result is printed.
+** I build the header out of the real arguments, so it can't end up describing a
+** different call than the one I make, and each function is called on its own line
+** before anything about its result is printed.
 *)
 
 (* ****** ****** *)
@@ -102,6 +104,7 @@ main0 () = {
 val sol1: int8 = (0, 4, 7, 5, 2, 6, 1, 3) // Solution #1
 val zeros: int8 = (0, 0, 0, 0, 0, 0, 0, 0)
 //
+// printing
 val () = case_print_dots ("P1", 0)
 val () = case_print_dots ("P2", 3)
 val () = case_print_dots ("P3", ~3)
@@ -109,6 +112,7 @@ val () = case_print_row ("P4", 0)
 val () = case_print_row ("P5", 7)
 val () = case_print_board ("P6", sol1)
 //
+// reading and writing a board, including rows that don't exist
 val () = case_board_get ("G1.0", sol1, 0)
 val () = case_board_get ("G1.1", sol1, 1)
 val () = case_board_get ("G1.2", sol1, 2)
@@ -125,6 +129,7 @@ val () = case_board_set ("S2", sol1, 7, 0)
 val () = case_board_set ("S3", sol1, 8, 5)
 val () = case_board_set ("S4", sol1, ~1, 5)
 //
+// are two queens safe from each other, and is a queen safe from the rows above
 val () = case_safety_test1 ("T1", 0, 0, 1, 2)
 val () = case_safety_test1 ("T2", 0, 3, 5, 3)
 val () = case_safety_test1 ("T3", 2, 2, 5, 5)
@@ -134,6 +139,7 @@ val () = case_safety_test2 ("T6", 7, 3, sol1, 6)
 val () = case_safety_test2 ("T7", 3, 4, sol1, 2)
 val () = case_safety_test2 ("T8", 0, 5, zeros, ~1)
 //
+// the search itself; R5 counts the solutions from each starting column
 val () = case_search ("R2", zeros, 0, 8, 0)
 val () = case_search ("R3", zeros, 0, 7, 10)
 val () = case_search ("R4", zeros, 1, 0, 0)

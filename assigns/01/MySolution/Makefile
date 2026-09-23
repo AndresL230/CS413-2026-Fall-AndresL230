@@ -1,4 +1,4 @@
-# Build and test the eight-queens translation. See TESTING.md.
+# Build and test my eight-queens translation. See TESTING.md.
 #
 #   make test             compare the Python translation with the saved ATS output
 #                         (needs only python3)

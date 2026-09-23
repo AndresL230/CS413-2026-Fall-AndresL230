@@ -1,13 +1,13 @@
-"""Regression tests: the Python translation must print exactly what the ATS original prints.
+"""The tests: my Python version has to print exactly what the ATS original prints.
 
-The files in tests/expected/ were produced from the ATS programs by
-`make expected` and are committed, so these tests need only python3.
-Run them from MySolution/ with `make test` or
+tests/expected/ holds what the ATS programs printed. `make expected` put it
+there and it is committed, so running the tests needs nothing but python3.
+Run them from MySolution/ with `make test`, or with
 `python3 -m unittest discover -s tests -v`.
 
-Outputs are compared as bytes, so a lost trailing space or a changed line
-ending counts as a failure. When outputs differ, lines are shown with repr()
-so that such invisible differences can be seen.
+I compare bytes, not text, so a lost trailing space or a changed line ending
+fails. When something differs I print the lines with repr(), because otherwise
+a difference like that is impossible to see.
 """
 
 import difflib
