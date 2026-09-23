@@ -45,8 +45,37 @@ to be split into one commit per part (Part A, Part B, documentation), and
 for this log.
 
 ## My understanding
-<!-- TODO (Andres): in your own words, a few sentences on:
-     - why pairs let the int8 board and the solution list be built in LAMBDA0
-     - why search needs a raised recursion limit (no tail calls)
-     - why the tuple-argument version was slower (a pair is re-evaluated
-       every time a parameter is read from it) -->
+
+### Why pairs let us build the board and the solution list
+Before this assignment, LAMBDA0 only had single values like numbers,
+booleans, strings, and functions, so there was no way to keep several values
+together. A pair holds two values, and putting pairs inside pairs gives you
+any length: the board is `(q0, (q1, (q2, ...)))`, and the solution list is
+`(board, rest_of_list)` ending in `0`. The only way to get values back out is
+`fst` and `snd`, which is why `board_get` walks the board one step at a time.
+To get queen 5 you take `snd` five times, then `fst`. I chose to keep every
+solution in a list instead of just counting them, so the program does what
+the ATS version does and every board can be checked.
+
+### Why the search needed a higher recursion limit
+In ATS, `search` calls itself as its very last action, and the compiler turns
+that tail call into a plain loop, so the stack never grows. Our Python
+interpreter can't do that. Evaluating a call means `t0erm_cbv_evaluate0` calls
+itself again, so each of the 17,685 search steps stacks more Python calls on
+top of the last one. Python stops at 1,000 by default and raises a
+`RecursionError`, so the driver raises the limit to 1,000,000.
+
+### Why the tuple-argument version was slower
+We tried passing all four arguments as one tuple, like ATS does, thinking
+each call would do less substitution. It backfired: 548 s instead of 104 s.
+This interpreter re-evaluates every part of a pair each time the pair is
+evaluated, even when the parts are already values. The tuple included `acc`,
+so every time the function read any parameter, it re-walked the whole growing
+solution list. We went back to curried arguments. The lesson for me was that
+a change that looks faster on paper has to be measured, because the
+interpreter's details decide what is actually fast.
+
+### Looking back
+If I did this again, I'd use the closure-based interpreter from the 09-22
+lecture, since it doesn't copy the program on every call and would be much
+faster.
