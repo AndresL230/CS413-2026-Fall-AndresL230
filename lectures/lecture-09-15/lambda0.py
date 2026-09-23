@@ -265,7 +265,7 @@ def t0erm_cbv_evaluate0(term: t0erm) -> t0erm:
                 elif term.arg1 == "<=":
                     return T0Mbtf(t1.arg1 <= t2.arg1)
                 else: # term.arg1 == ">="
-                    return T0Mbtf(t1.arg1 <= t2.arg1)
+                    return T0Mbtf(t1.arg1 >= t2.arg1)
             else:
                 raise TypeError(f"t0erm_cbv_evaluate0: {term.arg1} expects integers ({t1}, {t2})")
         else:
