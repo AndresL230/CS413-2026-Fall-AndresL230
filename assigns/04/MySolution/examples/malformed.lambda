@@ -1,0 +1,2 @@
+# Not a constructor expression: the reader rejects it without running it.
+__import__("os").system("echo unsafe")

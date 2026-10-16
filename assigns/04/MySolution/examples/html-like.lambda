@@ -1,0 +1,2 @@
+# The variable name looks like HTML and must be displayed literally.
+D0Evar("<b>bold</b><script>alert(1)</script>")

@@ -1,0 +1,2 @@
+# Closed, so Lint passes, but Interpret fails at run time.
+D0Eop2("/", D0Eint(1), D0Eint(0))

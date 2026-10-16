@@ -1,0 +1,2 @@
+# Lint reports x: it is used but never bound.
+D0Eop2("+", D0Evar("x"), D0Eint(1))

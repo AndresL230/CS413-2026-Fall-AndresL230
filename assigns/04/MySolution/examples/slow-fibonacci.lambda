@@ -1,0 +1,10 @@
+# fibonacci(40) by naive recursion: far too slow, so Interpret times out.
+D0Eapp(
+    D0Efix("fib", "n",
+        D0Eif0(
+            D0Eop2("<", D0Evar("n"), D0Eint(2)),
+            D0Evar("n"),
+            D0Eop2("+",
+                D0Eapp(D0Evar("fib"), D0Eop2("-", D0Evar("n"), D0Eint(1))),
+                D0Eapp(D0Evar("fib"), D0Eop2("-", D0Evar("n"), D0Eint(2)))))),
+    D0Eint(40))
