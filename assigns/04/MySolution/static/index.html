@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>LAMBDA workbench</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header>
+    <h1>LAMBDA workbench</h1>
+    <p>Check and run small programs written in the LAMBDA language. Everything
+       runs on this computer.</p>
+    <ol class="steps" aria-label="How to use this page">
+      <li><strong>Load</strong> a program or type one.</li>
+      <li><strong>Apply</strong> it, so the tools use that exact text.</li>
+      <li><strong>Run</strong> a tool on it.</li>
+      <li><strong>Read</strong> the result below.</li>
+    </ol>
+  </header>
+
+  <main id="workbench">
+    <section class="card" aria-labelledby="source-heading">
+      <h2 id="source-heading"><span class="step">1</span> Source</h2>
+      <p class="help">Choose where the program comes from, then press Load. Loading
+         replaces the current source and starts a new revision.</p>
+
+      <div class="row">
+        <label for="source-menu">Load source</label>
+        <select id="source-menu" aria-describedby="source-help">
+          <option value="file">Choose File…</option>
+          <option value="manual">Manual input</option>
+        </select>
+        <button type="button" id="load-button">Load</button>
+        <input type="file" id="file-input" hidden>
+      </div>
+      <dl id="source-help" class="options">
+        <div><dt>Choose File…</dt><dd>Opens a text file from this computer. The
+          file itself is never changed.</dd></div>
+        <div><dt>Manual input</dt><dd>Clears the editor so you can type a program
+          from scratch.</dd></div>
+        <div><dt>Factorial, Fibonacci</dt><dd>Ready-made examples you can run or
+          edit.</dd></div>
+      </dl>
+
+      <p id="source-info" class="applied"></p>
+      <p class="help">The applied source is the text the tools run on. The revision
+         number goes up each time it changes, and every result says which revision
+         it came from.</p>
+    </section>
+
+    <section class="card" aria-labelledby="editor-heading">
+      <h2 id="editor-heading"><span class="step">2</span> Editor</h2>
+      <p class="help" id="editor-help">A program is one constructor expression, for example
+         <code>D0Eop2("+", D0Eint(20), D0Eint(22))</code>. It may span several
+         lines, and lines starting with <code>#</code> are comments. The limit is
+         64 KiB.</p>
+
+      <label for="editor" id="editor-label">Program text</label>
+      <textarea id="editor" rows="14" spellcheck="false" autocapitalize="off"
+                autocomplete="off" aria-describedby="editor-help editor-info"></textarea>
+      <p id="editor-info" class="note"></p>
+
+      <div class="row">
+        <button type="button" id="apply-button" class="primary"
+                aria-describedby="apply-help">Apply changes</button>
+        <button type="button" id="discard-button"
+                aria-describedby="discard-help">Discard changes</button>
+      </div>
+      <dl class="options">
+        <div><dt>Apply changes</dt><dd id="apply-help">Makes the editor text the new
+          applied source and clears earlier results. Empty text is rejected.</dd></div>
+        <div><dt>Discard changes</dt><dd id="discard-help">Throws away your edits and
+          shows the applied source again.</dd></div>
+      </dl>
+      <p class="help">While the editor has unapplied changes, the tools and the Load
+         menu are turned off, so a result can never refer to text you have not
+         applied.</p>
+    </section>
+
+    <section class="card" aria-labelledby="actions-heading">
+      <h2 id="actions-heading"><span class="step">3</span> Actions</h2>
+      <p class="help">Each tool runs on the applied source. A run is stopped
+         automatically if it takes too long, and the source is kept.</p>
+      <ul id="actions" class="actions" aria-labelledby="actions-heading"
+          aria-describedby="actions-note"></ul>
+      <p id="actions-note" class="note"></p>
+    </section>
+
+    <section class="card" aria-labelledby="results-heading">
+      <h2 id="results-heading"><span class="step">4</span> Results</h2>
+      <p class="status-label" id="status-label">Status</p>
+      <p id="status" role="status" aria-live="polite" aria-labelledby="status-label"></p>
+      <p class="help">Newest first. Each result names the tool, the revision it ran
+         on and the outcome. Results are cleared whenever the source changes.</p>
+      <p id="results-empty" class="note"></p>
+      <ol id="results"></ol>
+    </section>
+  </main>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

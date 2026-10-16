@@ -1,0 +1,274 @@
+:root {
+  color-scheme: light;
+  --text: #16202e;
+  --muted: #5b6676;
+  --page: #ffffff;
+  --panel: #f6f8fb;
+  --line: #dde3ec;
+  --line-strong: #c3ccd9;
+  --accent: #1f5fd0;
+  --accent-dark: #174aa5;
+  --accent-soft: #eaf1fd;
+  --good: #146c3c;
+  --good-soft: #e6f5ec;
+  --bad: #a4262c;
+  --bad-soft: #fdecec;
+  --neutral-soft: #eef1f5;
+  --radius: 12px;
+  --mono: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0 auto;
+  max-width: 54rem;
+  padding: 2.5rem 1.25rem 4rem;
+  background: var(--page);
+  color: var(--text);
+  font: 1rem/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+h1 { margin: 0; font-size: 1.9rem; letter-spacing: -0.02em; }
+header > p { margin: 0.35rem 0 0; color: var(--muted); font-size: 1.05rem; }
+
+.steps {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+  gap: 0.6rem;
+  margin: 1.25rem 0 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: step;
+}
+
+.steps li {
+  counter-increment: step;
+  padding: 0.6rem 0.8rem;
+  border-radius: 10px;
+  background: var(--panel);
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+
+.steps li::before {
+  content: counter(step) ". ";
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.steps strong { color: var(--text); }
+
+.card {
+  margin-top: 1.25rem;
+  padding: 1.4rem 1.5rem 1.5rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--page);
+  box-shadow: 0 1px 2px rgb(22 32 46 / 0.04);
+}
+
+h2 {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin: 0 0 0.35rem;
+  font-size: 1.2rem;
+}
+
+.step {
+  display: inline-grid;
+  place-items: center;
+  width: 1.6rem;
+  height: 1.6rem;
+  border-radius: 50%;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.help { margin: 0 0 0.9rem; color: var(--muted); font-size: 0.93rem; }
+.note { margin: 0.5rem 0 0.9rem; color: var(--muted); font-size: 0.93rem; }
+.card > :last-child { margin-bottom: 0; }
+
+code {
+  padding: 0.1rem 0.35rem;
+  border-radius: 5px;
+  background: var(--panel);
+  font-family: var(--mono);
+  font-size: 0.88em;
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+label { font-weight: 600; }
+#editor-label { display: block; margin-bottom: 0.35rem; font-size: 0.93rem; }
+
+/* Short definitions of what each choice does. */
+.options {
+  display: grid;
+  gap: 0.3rem;
+  margin: 0.8rem 0 1rem;
+  padding: 0.75rem 0.9rem;
+  border-radius: 10px;
+  background: var(--panel);
+  font-size: 0.9rem;
+}
+
+.options div { display: grid; grid-template-columns: 10.5rem 1fr; gap: 0.75rem; }
+.options dt { font-weight: 600; }
+.options dd { margin: 0; color: var(--muted); }
+
+.applied {
+  margin: 0 0 0.4rem;
+  padding: 0.55rem 0.8rem;
+  border-left: 3px solid var(--accent);
+  border-radius: 0 8px 8px 0;
+  background: var(--accent-soft);
+  font-weight: 600;
+}
+
+button, select {
+  font: inherit;
+  font-size: 0.95rem;
+  padding: 0.5rem 0.95rem;
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  background: var(--page);
+  color: var(--text);
+}
+
+button { font-weight: 600; }
+button:not(:disabled) { cursor: pointer; }
+button:not(:disabled):hover { border-color: var(--accent); color: var(--accent-dark); }
+
+button.primary:not(:disabled) {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: #fff;
+}
+
+button.primary:not(:disabled):hover { background: var(--accent-dark); color: #fff; }
+
+button:disabled, select:disabled {
+  border-color: var(--line);
+  background: var(--panel);
+  color: #8a94a3;
+}
+
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+
+textarea, pre {
+  font-family: var(--mono);
+  font-size: 0.9rem;
+  line-height: 1.5;
+  tab-size: 4;
+}
+
+textarea {
+  display: block;
+  width: 100%;
+  padding: 0.8rem 0.9rem;
+  border: 1px solid var(--line-strong);
+  border-radius: 10px;
+  background: var(--page);
+  color: var(--text);
+  resize: vertical;
+}
+
+textarea:focus-visible { outline-offset: 0; border-color: var(--accent); }
+textarea:read-only { background: var(--panel); }
+
+.actions {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+  gap: 0.7rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.actions li {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  padding: 0.8rem;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+
+.actions button { width: 100%; }
+.actions p { margin: 0; color: var(--muted); font-size: 0.85rem; line-height: 1.4; }
+
+.status-label {
+  margin: 0.5rem 0 0.3rem;
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+#status {
+  min-height: 2.7rem;
+  margin: 0 0 1rem;
+  padding: 0.6rem 0.9rem;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--panel);
+  font-weight: 600;
+}
+
+#results { margin: 0; padding: 0; list-style: none; }
+
+.result {
+  margin: 0 0 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.result h3 {
+  margin: 0;
+  padding: 0.55rem 0.9rem;
+  border-bottom: 1px solid var(--line);
+  background: var(--panel);
+  font-size: 0.95rem;
+}
+
+/* The outcome is always written in words; the color and mark are extra. */
+.outcome {
+  display: inline-block;
+  padding: 0.05rem 0.6rem;
+  border-radius: 999px;
+  background: var(--bad-soft);
+  color: var(--bad);
+  font-size: 0.85rem;
+}
+
+.outcome::before { content: "✗ "; }
+.result.success .outcome { background: var(--good-soft); color: var(--good); }
+.result.success .outcome::before { content: "✓ "; }
+.result.not-implemented .outcome { background: var(--neutral-soft); color: var(--muted); }
+.result.not-implemented .outcome::before { content: "– "; }
+
+.result pre {
+  margin: 0;
+  padding: 0.8rem 0.9rem;
+  max-height: 20rem;
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 34rem) {
+  body { padding: 1.25rem 1rem 3rem; }
+  .card { padding: 1.1rem; }
+  .options div { grid-template-columns: 1fr; gap: 0; }
+}
