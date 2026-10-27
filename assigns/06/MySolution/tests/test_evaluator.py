@@ -141,10 +141,10 @@ class RejectionTests(unittest.TestCase):
         with self.assertRaises(EvalError):
             evaluate(42, 10)
 
-    def test_source_half_not_yet_implemented(self):
-        # Milestone 1 placeholder; replaced when the source half lands.
-        with self.assertRaises(NotImplementedError):
-            evaluate(D0Eapp(D0Elam("x", D0Evar("x")), D0Eint(1)))
+    def test_dispatches_source_to_source_half(self):
+        # Full source-half coverage is in test_source_eval.py.
+        self.assertEqual(evaluate(D0Eapp(D0Elam("x", D0Evar("x")), D0Eint(1))),
+                         Completed(D0Eint(1), 1))
 
 
 if __name__ == "__main__":

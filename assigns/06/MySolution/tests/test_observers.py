@@ -136,6 +136,23 @@ class PairObserverTests(unittest.TestCase):
         self.assertIsInstance(report.execution, Completed)
         self.assertEqual(report.observation.value, ((2, True), 3))
 
+    def test_per_component_steps_under_shared_budget(self):
+        term = app(PAIR, app(PAIR, num(2), TRUE), num(3))
+        kind = PairKind(PairKind(NAT, BOOL), NAT)
+        obs = execute_and_observe(term, kind, 1_000, 1_000).observation
+        first, second = obs.parts
+        self.assertEqual(first.steps + second.steps, obs.steps)
+        self.assertEqual(first.value, (2, True))
+        self.assertEqual(second.value, 3)
+        self.assertGreater(second.steps, 0)
+        # Nested pairs keep their own breakdown.
+        inner_first, inner_second = first.parts
+        self.assertEqual(inner_first.steps + inner_second.steps, first.steps)
+        self.assertIsNone(inner_first.parts)
+        # Each component's count includes its projection: num(3) alone
+        # takes 6 observation steps, so the second part must take more.
+        self.assertGreater(second.steps, observe_nat(num(3), 100).steps)
+
     def test_wrong_component_kind_is_malformed(self):
         v = value_of(app(PAIR, TRUE, num(2)))
         self.assertIsInstance(observe(v, PairKind(NAT, NAT), 1_000), Malformed)
