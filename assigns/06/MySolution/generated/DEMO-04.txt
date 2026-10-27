@@ -1,0 +1,4 @@
+# DEMO-04: let x = 3 in (lam y. x + y) 4
+# source: (let x = 3 in ((lam y. (x + y)) 4))
+# 41 nodes
+((lam x. ((lam y. (((lam m. (lam n. (lam s. (lam z. ((m s) ((n s) z)))))) x) y)) (lam s. (lam z. (s (s (s (s z)))))))) (lam s. (lam z. (s (s (s z))))))

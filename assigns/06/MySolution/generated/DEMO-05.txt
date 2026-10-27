@@ -1,0 +1,4 @@
+# DEMO-05: fst (pair 2 true)
+# source: (fst (pair 2 true))
+# 27 nodes
+((lam p. (p (lam t. (lam f. t)))) (((lam a. (lam b. (lam p. ((p a) b)))) (lam s. (lam z. (s (s z))))) (lam t. (lam f. t))))

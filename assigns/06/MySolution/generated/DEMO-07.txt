@@ -1,0 +1,4 @@
+# DEMO-07: (lam f. f 3) (lam x. x + 1)
+# source: ((lam f. (f 3)) (lam x. (x + 1)))
+# 35 nodes
+((lam f. (f (lam s. (lam z. (s (s (s z))))))) (lam x. (((lam m. (lam n. (lam s. (lam z. ((m s) ((n s) z)))))) x) (lam s. (lam z. (s z))))))

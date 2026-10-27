@@ -1,0 +1,4 @@
+# DEMO-08: if true then 1 else LOOP
+# source: (if true then 1 else ((fix loop(x). (loop x)) 0))
+# 45 nodes
+((((lam t. (lam f. t)) (lam u. (lam s. (lam z. (s z))))) (lam v_1. (((lam g. ((lam x. (g (lam v. ((x x) v)))) (lam x. (g (lam v. ((x x) v)))))) (lam loop. (lam x. (loop x)))) (lam s. (lam z. z))))) (lam w. w))

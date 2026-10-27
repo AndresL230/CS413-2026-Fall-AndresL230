@@ -1,0 +1,4 @@
+# DEMO-12: LOOP
+# source: ((fix loop(x). (loop x)) 0)
+# 30 nodes
+(((lam g. ((lam x. (g (lam v. ((x x) v)))) (lam x. (g (lam v. ((x x) v)))))) (lam loop. (lam x. (loop x)))) (lam s. (lam z. z)))

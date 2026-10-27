@@ -1,0 +1,4 @@
+# DEMO-09: (lam x. 0) LOOP
+# source: ((lam x. 0) ((fix loop(x). (loop x)) 0))
+# 35 nodes
+((lam x. (lam s. (lam z. z))) (((lam g. ((lam x. (g (lam v. ((x x) v)))) (lam x. (g (lam v. ((x x) v)))))) (lam loop. (lam x. (loop x)))) (lam s. (lam z. z))))

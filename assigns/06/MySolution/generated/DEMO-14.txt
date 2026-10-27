@@ -1,0 +1,4 @@
+# DEMO-14: false or true
+# source: (false or true)
+# 16 nodes
+((((lam t. (lam f. f)) (lam u. (lam t. (lam f. t)))) (lam v. (lam t. (lam f. t)))) (lam w. w))
