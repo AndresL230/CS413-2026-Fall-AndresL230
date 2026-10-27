@@ -11,10 +11,11 @@ import unittest
 
 from evaluator import evaluate, Completed, EvalError
 from source import D0Eint, D0Ebtf, D0Efix, D0Elam, D0Eop1, D0Eop2
-from tests.helpers import (
+from examples import (
     V, N, B, TRUE_, FALSE_, op, app, lam, if_, let, pair, fst, snd, not_,
-    LOOP, FACT, FIB, to_python,
+    LOOP, FACT, FIB,
 )
+from pipeline import to_python
 
 
 def value(expr):

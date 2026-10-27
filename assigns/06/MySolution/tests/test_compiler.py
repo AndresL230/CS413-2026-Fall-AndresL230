@@ -21,10 +21,11 @@ from evaluator import evaluate, Completed, Exhausted
 from observers import NAT, BOOL, PairKind, Decoded, execute_and_observe
 from source import D0Eint, D0Ebtf, D0Efix, D0Eop1, D0Eop2, d0exp_fvset
 from target import Var, Lam, App, free_vars, is_pure, pretty
-from tests.helpers import (
+from examples import (
     V, N, B, TRUE_, FALSE_, op, app, lam, if_, let, pair, fst, snd, not_,
-    LOOP, FACT, FIB, to_python,
+    LOOP, FACT, FIB,
 )
+from pipeline import to_python
 
 MYSOLUTION = Path(__file__).resolve().parents[1]
 EXEC, OBS = 200_000, 200_000
