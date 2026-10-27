@@ -10,15 +10,29 @@ from __future__ import annotations
 # It runs on an explicit stack (no Python recursion per redex), counts
 # steps against a budget, and applies no source-language operations.
 #
-# Source path: not implemented yet (milestone 1).
+# Source path: the same left-to-right call-by-value rules over source
+# ASTs, by substitution. Values are D0Eint, D0Ebtf, D0Epair of values,
+# D0Elam, and D0Efix. Source-only constructors use the source rules:
+# truncated subtraction, short-circuit and/or, and only the selected
+# branch of a conditional. It is unbounded (budget must be None) and
+# counts application and let contractions as steps.
 #
-# This module must not import the compiler.
+# Both paths share one contraction rule, _contract, for target lambdas,
+# source lambdas, and source fix values.
+#
+# This module must not import the compiler or the Church library.
 # Requires Python 3.12 or later.
 ########################################################################
 ########################################################################
 from dataclasses import dataclass, fields
 
-from source import D0E000
+import source
+from source import (
+    D0ExpVisitor, D0E000, d0exp,
+    D0Eint, D0Ebtf, D0Eop1, D0Eop2, D0Evar, D0Elam, D0Efix,
+    D0Eapp, D0Eif0, D0Elet, D0Epair, D0Epfst, D0Epsnd,
+    UnsupportedSource, d0exp_pretty, d0exp_substitute,
+)
 from target import Term, TERM_TYPES, Lam, App, free_vars, is_pure, \
     pretty, substitute
 
@@ -60,7 +74,10 @@ def evaluate(expr: object, budget: int | None = None, *,
     """Evaluate a source AST or a closed target term.
 
     A target term needs a nonnegative int budget of beta-value steps. When
-    trace is a list, each target contraction is appended to it.
+    trace is a list, each target contraction is appended to it. A source
+    AST is evaluated without a budget; source runtime errors (unbound
+    names, type errors, Python recursion exhaustion on divergence) and
+    unsupported input anywhere in the tree raise EvalError.
     """
     if isinstance(expr, TERM_TYPES):
         if not is_pure(expr):
@@ -73,7 +90,13 @@ def evaluate(expr: object, budget: int | None = None, *,
         return _run_target(expr, budget, trace)
     if isinstance(expr, D0E000):
         _check_pure_source(expr)
-        raise NotImplementedError("source evaluation is not implemented yet")
+        if budget is not None:
+            raise TypeError("source evaluation is unbounded; budget must be None")
+        try:
+            source.validate(expr)
+        except UnsupportedSource as err:
+            raise EvalError(str(err)) from err
+        return _run_source(expr)
     raise EvalError(f"not a source AST or target term: {expr!r}")
 
 
@@ -136,9 +159,156 @@ def _run_target(term: Term, budget: int,
             if steps == budget:
                 return Exhausted(steps)
             steps += 1
-            contractum = substitute(held.body, held.param, value)
+            contractum = _contract(held, value)
             if tracing:
                 trace.append(TraceStep(steps, frame_path,
                                        App(held, value), contractum))
             current, path = contractum, frame_path
             break
+
+########################################################################
+# Shared contraction rule
+########################################################################
+
+def _contract(fn: object, arg: object) -> object:
+    """Contract (fn arg) where both are values: substitute the argument
+    for the parameter. A target lambda gets target substitution only."""
+    match fn:
+        case Lam(param, body):
+            return substitute(body, param, arg)
+        case D0Elam(param, body):
+            return d0exp_substitute(body, param, arg)
+        case D0Efix(fname, param, body):
+            # The parameter shadows a coincident function name: then only
+            # x := v applies. Otherwise f := fn first, then x := v. Both
+            # values are closed in a closed program, so order is safe.
+            if fname != param:
+                body = d0exp_substitute(body, fname, fn)
+            return d0exp_substitute(body, param, arg)
+    raise EvalError(f"not a function value: {_show(fn)}")
+
+
+def _show(value: object) -> str:
+    if isinstance(value, TERM_TYPES):
+        return pretty(value)
+    if isinstance(value, D0E000):
+        return d0exp_pretty(value)
+    return repr(value)
+
+########################################################################
+# Source path
+########################################################################
+
+def _run_source(expr: d0exp) -> Outcome:
+    visitor = _SourceEvaluator()
+    try:
+        value = expr.accept(visitor)
+    except RecursionError:
+        raise EvalError("source evaluation exceeded the Python recursion "
+                        f"limit after {visitor.steps} steps (likely divergent)") \
+            from None
+    return Completed(value, visitor.steps)
+
+
+class _SourceEvaluator(D0ExpVisitor[d0exp]):
+    """Left-to-right call-by-value over source ASTs by substitution.
+    Every visit returns a value expression."""
+
+    def __init__(self) -> None:
+        self.steps = 0
+
+    def visit_int(self, dexp: D0Eint) -> d0exp:
+        return dexp
+
+    def visit_btf(self, dexp: D0Ebtf) -> d0exp:
+        return dexp
+
+    def visit_var(self, dexp: D0Evar) -> d0exp:
+        # Bound names were substituted away, so any variable left is free.
+        raise EvalError(f"unbound variable: {dexp.arg1}")
+
+    def visit_lam(self, dexp: D0Elam) -> d0exp:
+        return dexp
+
+    def visit_fix(self, dexp: D0Efix) -> d0exp:
+        return dexp
+
+    def visit_app(self, dexp: D0Eapp) -> d0exp:
+        fn = dexp.arg1.accept(self)
+        arg = dexp.arg2.accept(self)
+        if not isinstance(fn, (D0Elam, D0Efix)):
+            raise EvalError(f"application of a non-function: {_show(fn)}")
+        self.steps += 1
+        return _contract(fn, arg).accept(self)
+
+    def visit_let(self, dexp: D0Elet) -> d0exp:
+        init = dexp.arg2.accept(self)
+        self.steps += 1
+        return d0exp_substitute(dexp.arg3, dexp.arg1, init).accept(self)
+
+    def visit_if0(self, dexp: D0Eif0) -> d0exp:
+        chosen = dexp.arg2 if self._bool(dexp.arg1) else dexp.arg3
+        return chosen.accept(self)
+
+    def visit_pair(self, dexp: D0Epair) -> d0exp:
+        first = dexp.arg1.accept(self)
+        second = dexp.arg2.accept(self)
+        return D0Epair(first, second)
+
+    def visit_pfst(self, dexp: D0Epfst) -> d0exp:
+        return self._pair(dexp.arg1).arg1
+
+    def visit_psnd(self, dexp: D0Epsnd) -> d0exp:
+        return self._pair(dexp.arg1).arg2
+
+    def visit_op1(self, dexp: D0Eop1) -> d0exp:
+        return D0Ebtf(not self._bool(dexp.arg1))  # only "not" is valid
+
+    def visit_op2(self, dexp: D0Eop2) -> d0exp:
+        match dexp.name:
+            case "and":
+                return D0Ebtf(self._bool(dexp.arg1) and self._bool(dexp.arg2))
+            case "or":
+                return D0Ebtf(self._bool(dexp.arg1) or self._bool(dexp.arg2))
+        left = self._nat(dexp.arg1)
+        right = self._nat(dexp.arg2)
+        match dexp.name:
+            case "+":
+                return D0Eint(left + right)
+            case "-":
+                return D0Eint(max(left - right, 0))
+            case "*":
+                return D0Eint(left * right)
+            case "<":
+                return D0Ebtf(left < right)
+            case "<=":
+                return D0Ebtf(left <= right)
+            case ">":
+                return D0Ebtf(left > right)
+            case ">=":
+                return D0Ebtf(left >= right)
+            case "==":
+                return D0Ebtf(left == right)
+            case "!=":
+                return D0Ebtf(left != right)
+        raise EvalError(f"unsupported operator: {dexp.name!r}")
+
+    # Operand helpers: evaluate, then check the source-language kind.
+
+    def _nat(self, dexp: d0exp) -> int:
+        value = dexp.accept(self)
+        if not isinstance(value, D0Eint):
+            raise EvalError(f"natural number expected: {_show(value)}")
+        return value.arg1
+
+    def _bool(self, dexp: d0exp) -> bool:
+        value = dexp.accept(self)
+        if not isinstance(value, D0Ebtf):
+            raise EvalError(f"boolean expected: {_show(value)}")
+        return value.arg1
+
+    def _pair(self, dexp: d0exp) -> D0Epair:
+        value = dexp.accept(self)
+        if not isinstance(value, D0Epair):
+            raise EvalError(f"pair expected: {_show(value)}")
+        return value

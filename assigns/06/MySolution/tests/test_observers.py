@@ -10,7 +10,7 @@ from __future__ import annotations
 import copy
 import unittest
 
-from church import TRUE, FALSE, num, PAIR, SUCC, ADD, MUL, NOT, AND
+from church import TRUE, FALSE, num, PAIR, FST, SUCC, ADD, MUL, NOT, AND
 from evaluator import evaluate, Completed, Exhausted
 from observers import (
     NAT, BOOL, PairKind, Decoded, Malformed, ObsExhausted,
@@ -145,9 +145,13 @@ class PairObserverTests(unittest.TestCase):
         self.assertEqual(first.value, (2, True))
         self.assertEqual(second.value, 3)
         self.assertGreater(second.steps, 0)
-        # Nested pairs keep their own breakdown.
+        # Nested pairs keep their own breakdown; the outer part also
+        # pays for projecting the inner pair out of the outer one.
         inner_first, inner_second = first.parts
-        self.assertEqual(inner_first.steps + inner_second.steps, first.steps)
+        outer_value = value_of(term)
+        projection_steps = evaluate(App(FST, outer_value), 100).steps
+        self.assertEqual(inner_first.steps + inner_second.steps + projection_steps,
+                         first.steps)
         self.assertIsNone(inner_first.parts)
         # Each component's count includes its projection: num(3) alone
         # takes 6 observation steps, so the second part must take more.

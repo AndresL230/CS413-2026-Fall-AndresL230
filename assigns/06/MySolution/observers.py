@@ -31,7 +31,8 @@ from __future__ import annotations
 # Budgets: execute_and_observe runs the program under the execution
 # budget. Every observation step after that (contexts, projections,
 # nested components) comes from one shared observation budget, and the
-# two counts are reported separately.
+# two counts are reported separately. A decoded pair also reports each
+# component's share of the observation steps.
 # Requires Python 3.12 or later.
 ########################################################################
 ########################################################################
@@ -71,9 +72,12 @@ type Kind = Base | PairKind
 
 @dataclass(frozen=True)
 class Decoded:
-    """value is an int, a bool, or a (nested) tuple for pairs."""
+    """value is an int, a bool, or a (nested) tuple for pairs. For a
+    pair, parts holds each component's own Decoded, whose steps cover
+    that component's projection and decoding; they sum to steps."""
     value: object
     steps: int
+    parts: tuple[Decoded, Decoded] | None = None
 
 
 @dataclass(frozen=True)
@@ -163,23 +167,25 @@ def execute_and_observe(term: Term, kind: Kind, exec_budget: int,
 
 def _observe_pair(value: Term, first_kind: Kind, second_kind: Kind,
                   budget: int) -> ObsOutcome:
-    decoded = []
+    parts: list[Decoded] = []
     used = 0
     for projection, kind in ((FST, first_kind), (SND, second_kind)):
         projected = evaluate(App(projection, value), budget - used)
-        used += projected.steps
         if not isinstance(projected, Completed):
-            return ObsExhausted(used)
-        component = observe(projected.value, kind, budget - used)
-        used += component.steps
+            return ObsExhausted(used + projected.steps)
+        component = observe(projected.value, kind,
+                            budget - used - projected.steps)
+        part_steps = projected.steps + component.steps
+        used += part_steps
         match component:
-            case Decoded(component_value, _):
-                decoded.append(component_value)
+            case Decoded(component_value, _, component_parts):
+                parts.append(Decoded(component_value, part_steps,
+                                     component_parts))
             case Malformed(reason, _):
                 return Malformed(f"pair component: {reason}", used)
             case ObsExhausted():
                 return ObsExhausted(used)
-    return Decoded(tuple(decoded), used)
+    return Decoded(tuple(part.value for part in parts), used, tuple(parts))
 
 ########################################################################
 # Shape inspection

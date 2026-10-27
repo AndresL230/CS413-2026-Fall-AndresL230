@@ -7,6 +7,7 @@ Run from assigns/06:
 from __future__ import annotations
 
 import copy
+import re
 import subprocess
 import sys
 import unittest
@@ -277,7 +278,7 @@ class RejectionTests(unittest.TestCase):
             ("invalid binder", lam("a-b", N(1)), "'a-b'"),
         ]:
             with self.subTest(label):
-                with self.assertRaisesRegex(CompileError, needle) as caught:
+                with self.assertRaisesRegex(CompileError, re.escape(needle)) as caught:
                     compile_expr(expr)
                 self.assertNotIsInstance(caught.exception, NotImplementedError)
 
