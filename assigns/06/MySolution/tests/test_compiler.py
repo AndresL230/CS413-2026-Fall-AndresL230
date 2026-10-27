@@ -17,6 +17,7 @@ from unittest import mock
 import church
 import evaluator
 from compiler import compile_expr, CompileError
+from examples import DEMOS
 from evaluator import evaluate, Completed, Exhausted
 from observers import NAT, BOOL, PairKind, Decoded, execute_and_observe
 from source import D0Eint, D0Ebtf, D0Efix, D0Eop1, D0Eop2, d0exp_fvset
@@ -222,37 +223,42 @@ class ScopeAndNamingTests(unittest.TestCase):
             self.assertEqual(expr, before)
 
 
+SKIPPED_DIVERGENCE_CASES = [
+    ("false and LOOP", op("and", F, LOOP), BOOL, False),
+    ("true or LOOP", op("or", T, LOOP), BOOL, True),
+    ("if true then 1 else LOOP", if_(T, N(1), LOOP), NAT, 1),
+    ("if false then LOOP else 2", if_(F, LOOP, N(2)), NAT, 2),
+]
+
+FORCED_DIVERGENCE_CASES = [
+    ("LOOP", LOOP, NAT),
+    ("(lam x. 0) LOOP", app(lam("x", N(0)), LOOP), NAT),
+    ("let x = LOOP in 2", let("x", LOOP, N(2)), NAT),
+    ("fst (pair 2 LOOP)", fst(pair(N(2), LOOP)), NAT),
+    ("snd (pair LOOP true)", snd(pair(LOOP, T)), BOOL),
+    ("pair LOOP 1", pair(LOOP, N(1)), PairKind(NAT, NAT)),
+    ("pair 1 LOOP", pair(N(1), LOOP), PairKind(NAT, NAT)),
+    ("if true then LOOP else 1", if_(T, LOOP, N(1)), NAT),
+    ("if false then 1 else LOOP", if_(F, N(1), LOOP), NAT),
+    ("true and LOOP", op("and", T, LOOP), BOOL),
+    ("false or LOOP", op("or", F, LOOP), BOOL),
+    ("LOOP + 1", op("+", LOOP, N(1)), NAT),
+    ("1 + LOOP", op("+", N(1), LOOP), NAT),
+]
+
+
 class CallByValueTests(unittest.TestCase):
     """ACC-08 and the delayed-branch requirements."""
 
     BUDGET = 3_000
 
     def test_skipped_divergence(self):
-        for label, expr, kind, expected in [
-            ("false and LOOP", op("and", F, LOOP), BOOL, False),
-            ("true or LOOP", op("or", T, LOOP), BOOL, True),
-            ("if true then 1 else LOOP", if_(T, N(1), LOOP), NAT, 1),
-            ("if false then LOOP else 2", if_(F, LOOP, N(2)), NAT, 2),
-        ]:
+        for label, expr, kind, expected in SKIPPED_DIVERGENCE_CASES:
             with self.subTest(label):
                 self.assertEqual(run_compiled(expr, kind).observation.value, expected)
 
     def test_forced_divergence_exhausts(self):
-        for label, expr, kind in [
-            ("LOOP", LOOP, NAT),
-            ("(lam x. 0) LOOP", app(lam("x", N(0)), LOOP), NAT),
-            ("let x = LOOP in 2", let("x", LOOP, N(2)), NAT),
-            ("fst (pair 2 LOOP)", fst(pair(N(2), LOOP)), NAT),
-            ("snd (pair LOOP true)", snd(pair(LOOP, T)), BOOL),
-            ("pair LOOP 1", pair(LOOP, N(1)), PairKind(NAT, NAT)),
-            ("pair 1 LOOP", pair(N(1), LOOP), PairKind(NAT, NAT)),
-            ("if true then LOOP else 1", if_(T, LOOP, N(1)), NAT),
-            ("if false then 1 else LOOP", if_(F, N(1), LOOP), NAT),
-            ("true and LOOP", op("and", T, LOOP), BOOL),
-            ("false or LOOP", op("or", F, LOOP), BOOL),
-            ("LOOP + 1", op("+", LOOP, N(1)), NAT),
-            ("1 + LOOP", op("+", N(1), LOOP), NAT),
-        ]:
+        for label, expr, kind in FORCED_DIVERGENCE_CASES:
             with self.subTest(label):
                 report = run_compiled(expr, kind, self.BUDGET)
                 self.assertEqual(report.execution, Exhausted(self.BUDGET))
@@ -315,6 +321,31 @@ class IsolationTests(unittest.TestCase):
         loaded = self._modules_loaded_by("evaluator")
         self.assertNotIn("'compiler'", loaded)
         self.assertNotIn("'church'", loaded)
+
+
+class PurityAcrossSuiteTests(unittest.TestCase):
+    """CMP-03: every source AST the suite compiles yields only Var, Lam,
+    and App nodes, with FV(C[e]) = FV(e) (so no library name is left
+    unresolved)."""
+
+    def all_sources(self):
+        yield from ((label, expr) for label, expr, _, _ in AGREEMENT_CASES)
+        yield from ((label, expr) for label, expr, _, _ in SKIPPED_DIVERGENCE_CASES)
+        yield from ((label, expr) for label, expr, _ in FORCED_DIVERGENCE_CASES)
+        yield from ((f"open case {k}", expr)
+                    for k, expr in enumerate(ScopeAndNamingTests.OPEN_CASES))
+        yield from ((demo.id, demo.source) for demo in DEMOS)
+        yield from (("fact", FACT), ("fib", FIB), ("LOOP", LOOP))
+
+    def test_every_compiled_output_is_pure(self):
+        count = 0
+        for label, expr in self.all_sources():
+            with self.subTest(label):
+                target = compile_expr(expr)
+                self.assertTrue(is_pure(target))
+                self.assertEqual(free_vars(target), d0exp_fvset(expr))
+                count += 1
+        self.assertGreater(count, 100)
 
 
 if __name__ == "__main__":
