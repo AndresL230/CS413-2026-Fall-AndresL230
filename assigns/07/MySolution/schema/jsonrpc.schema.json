@@ -1,0 +1,331 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:cs413:lambda3-rpc:1.0",
+  "title": "LAMBDA3 JSON-RPC 2.0 envelopes",
+  "description": "Request and response envelopes for the LAMBDA3 JSON-RPC 2.0 service (contract version 1.0, see RPC.md). Describes valid requests and every response the service can produce; invalid requests are not described here.",
+  "anyOf": [
+    { "$ref": "#/$defs/requestPayload" },
+    { "$ref": "#/$defs/responsePayload" }
+  ],
+  "$defs": {
+    "id": {
+      "description": "Request/response identifier: string, number, or null. Booleans are not valid.",
+      "type": ["string", "number", "null"]
+    },
+
+    "healthParams": {
+      "description": "Params of service.health: an empty object (no keys allowed).",
+      "type": "object",
+      "maxProperties": 0
+    },
+    "source": {
+      "description": "LAMBDA3 source text: 1 to 32,768 code points with at least one non-whitespace character.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 32768,
+      "pattern": "\\S"
+    },
+    "sourceParams": {
+      "description": "Params of lambda.typecheck and lambda.interpret: exactly a source string.",
+      "type": "object",
+      "properties": { "source": { "$ref": "#/$defs/source" } },
+      "required": ["source"],
+      "additionalProperties": false
+    },
+    "compileParams": {
+      "description": "Params of lambda.compile: a source string and a target language.",
+      "type": "object",
+      "properties": {
+        "source": { "$ref": "#/$defs/source" },
+        "target": { "enum": ["python", "javascript"] }
+      },
+      "required": ["source", "target"],
+      "additionalProperties": false
+    },
+
+    "request": {
+      "description": "A single valid call (has id) or notification (no id) of one of the four known methods, with method-specific params.",
+      "type": "object",
+      "properties": {
+        "jsonrpc": { "const": "2.0" },
+        "method": {
+          "enum": [
+            "service.health",
+            "lambda.typecheck",
+            "lambda.interpret",
+            "lambda.compile"
+          ]
+        },
+        "params": { "type": "object" },
+        "id": { "$ref": "#/$defs/id" }
+      },
+      "required": ["jsonrpc", "method"],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": { "method": { "const": "service.health" } },
+            "required": ["method"]
+          },
+          "then": {
+            "properties": { "params": { "$ref": "#/$defs/healthParams" } }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "method": { "enum": ["lambda.typecheck", "lambda.interpret"] }
+            },
+            "required": ["method"]
+          },
+          "then": {
+            "properties": { "params": { "$ref": "#/$defs/sourceParams" } },
+            "required": ["params"]
+          }
+        },
+        {
+          "if": {
+            "properties": { "method": { "const": "lambda.compile" } },
+            "required": ["method"]
+          },
+          "then": {
+            "properties": { "params": { "$ref": "#/$defs/compileParams" } },
+            "required": ["params"]
+          }
+        }
+      ]
+    },
+    "batchRequest": {
+      "description": "A nonempty JSON array of requests. Batches do not nest.",
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/request" }
+    },
+    "requestPayload": {
+      "description": "Whatever may be POSTed as a valid body: one request or a nonempty batch of requests.",
+      "oneOf": [
+        { "$ref": "#/$defs/request" },
+        { "$ref": "#/$defs/batchRequest" }
+      ]
+    },
+
+    "healthResult": {
+      "description": "Result of service.health.",
+      "type": "object",
+      "properties": {
+        "status": { "const": "ok" },
+        "version": { "const": "1.0" }
+      },
+      "required": ["status", "version"],
+      "additionalProperties": false
+    },
+    "typecheckResult": {
+      "description": "Result of lambda.typecheck: the formatted LAMBDA3 type.",
+      "type": "object",
+      "properties": { "type": { "type": "string" } },
+      "required": ["type"],
+      "additionalProperties": false
+    },
+    "interpretResult": {
+      "description": "Result of lambda.interpret: formatted type and formatted value (always strings).",
+      "type": "object",
+      "properties": {
+        "type": { "type": "string" },
+        "value": { "type": "string" }
+      },
+      "required": ["type", "value"],
+      "additionalProperties": false
+    },
+    "compileResult": {
+      "description": "Result of lambda.compile: the target and the generated source text (never executed).",
+      "type": "object",
+      "properties": {
+        "target": { "enum": ["python", "javascript"] },
+        "code": { "type": "string" }
+      },
+      "required": ["target", "code"],
+      "additionalProperties": false
+    },
+
+    "successResponse": {
+      "description": "A response carrying a result and no error.",
+      "type": "object",
+      "properties": {
+        "jsonrpc": { "const": "2.0" },
+        "id": { "$ref": "#/$defs/id" },
+        "result": {
+          "anyOf": [
+            { "$ref": "#/$defs/healthResult" },
+            { "$ref": "#/$defs/typecheckResult" },
+            { "$ref": "#/$defs/interpretResult" },
+            { "$ref": "#/$defs/compileResult" }
+          ]
+        }
+      },
+      "required": ["jsonrpc", "id", "result"],
+      "additionalProperties": false
+    },
+
+    "invalidRequestData": {
+      "description": "data of -32600: a reason string.",
+      "type": "object",
+      "properties": { "reason": { "type": "string" } },
+      "required": ["reason"],
+      "additionalProperties": false
+    },
+    "methodNotFoundData": {
+      "description": "data of -32601: the offending method name, truncated to 128 characters.",
+      "type": "object",
+      "properties": { "method": { "type": "string", "maxLength": 128 } },
+      "required": ["method"],
+      "additionalProperties": false
+    },
+    "invalidParamsData": {
+      "description": "data of -32602: optional param name, a reason, and limit/actual for oversized source.",
+      "type": "object",
+      "properties": {
+        "param": { "type": "string" },
+        "reason": { "type": "string" },
+        "limit": { "type": "integer" },
+        "actual": { "type": "integer" }
+      },
+      "required": ["reason"],
+      "additionalProperties": false
+    },
+    "syntaxErrorData": {
+      "description": "data of -32010: 1-based line and column and the offending source line (at most 200 characters).",
+      "type": "object",
+      "properties": {
+        "line": { "type": "integer", "minimum": 1 },
+        "column": { "type": "integer", "minimum": 1 },
+        "snippet": { "type": "string", "maxLength": 200 }
+      },
+      "required": ["line", "column", "snippet"],
+      "additionalProperties": false
+    },
+    "typeErrorData": {
+      "description": "data of -32011: the type checker's message.",
+      "type": "object",
+      "properties": { "detail": { "type": "string" } },
+      "required": ["detail"],
+      "additionalProperties": false
+    },
+    "timeoutData": {
+      "description": "data of -32012: the deadline in seconds.",
+      "type": "object",
+      "properties": { "seconds": { "type": "number", "exclusiveMinimum": 0 } },
+      "required": ["seconds"],
+      "additionalProperties": false
+    },
+    "runtimeErrorData": {
+      "description": "data of -32013: a stable language-level kind and the interpreter's message.",
+      "type": "object",
+      "properties": {
+        "kind": {
+          "enum": [
+            "division_by_zero",
+            "invalid_operation",
+            "index_out_of_range",
+            "recursion_depth_exceeded"
+          ]
+        },
+        "detail": { "type": "string" }
+      },
+      "required": ["kind", "detail"],
+      "additionalProperties": false
+    },
+
+    "errorObject": {
+      "description": "JSON-RPC error object. The data member is tied to the code: none for -32700 and -32603, a specific shape for the others.",
+      "type": "object",
+      "properties": {
+        "code": {
+          "enum": [-32700, -32600, -32601, -32602, -32603, -32010, -32011, -32012, -32013]
+        },
+        "message": { "type": "string" },
+        "data": {}
+      },
+      "required": ["code", "message"],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": { "properties": { "code": { "enum": [-32700, -32603] } }, "required": ["code"] },
+          "then": { "not": { "required": ["data"] } }
+        },
+        {
+          "if": { "properties": { "code": { "const": -32600 } }, "required": ["code"] },
+          "then": { "properties": { "data": { "$ref": "#/$defs/invalidRequestData" } } }
+        },
+        {
+          "if": { "properties": { "code": { "const": -32601 } }, "required": ["code"] },
+          "then": { "properties": { "data": { "$ref": "#/$defs/methodNotFoundData" } } }
+        },
+        {
+          "if": { "properties": { "code": { "const": -32602 } }, "required": ["code"] },
+          "then": { "properties": { "data": { "$ref": "#/$defs/invalidParamsData" } } }
+        },
+        {
+          "if": { "properties": { "code": { "const": -32010 } }, "required": ["code"] },
+          "then": { "properties": { "data": { "$ref": "#/$defs/syntaxErrorData" } } }
+        },
+        {
+          "if": { "properties": { "code": { "const": -32011 } }, "required": ["code"] },
+          "then": { "properties": { "data": { "$ref": "#/$defs/typeErrorData" } } }
+        },
+        {
+          "if": { "properties": { "code": { "const": -32012 } }, "required": ["code"] },
+          "then": { "properties": { "data": { "$ref": "#/$defs/timeoutData" } } }
+        },
+        {
+          "if": { "properties": { "code": { "const": -32013 } }, "required": ["code"] },
+          "then": { "properties": { "data": { "$ref": "#/$defs/runtimeErrorData" } } }
+        }
+      ]
+    },
+    "errorResponse": {
+      "description": "A response carrying an error and no result. Codes -32700 and -32600 always have id null.",
+      "type": "object",
+      "properties": {
+        "jsonrpc": { "const": "2.0" },
+        "id": { "$ref": "#/$defs/id" },
+        "error": { "$ref": "#/$defs/errorObject" }
+      },
+      "required": ["jsonrpc", "id", "error"],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "error": {
+                "properties": { "code": { "enum": [-32700, -32600] } },
+                "required": ["code"]
+              }
+            },
+            "required": ["error"]
+          },
+          "then": { "properties": { "id": { "type": "null" } } }
+        }
+      ]
+    },
+    "response": {
+      "description": "Exactly one of a success response or an error response.",
+      "oneOf": [
+        { "$ref": "#/$defs/successResponse" },
+        { "$ref": "#/$defs/errorResponse" }
+      ]
+    },
+    "batchResponse": {
+      "description": "A nonempty JSON array of responses (one per call or invalid member; notifications get none).",
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/response" }
+    },
+    "responsePayload": {
+      "description": "Whatever the dispatcher may return with HTTP 200: one response or a nonempty batch of responses.",
+      "oneOf": [
+        { "$ref": "#/$defs/response" },
+        { "$ref": "#/$defs/batchResponse" }
+      ]
+    }
+  }
+}
