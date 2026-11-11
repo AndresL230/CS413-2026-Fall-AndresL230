@@ -153,6 +153,68 @@ I had also asked Claude Code to use Sonnet for writing code.
   process, a 1 MiB all-digit JSON `id` is accepted. Measured: about 0.6 s to
   parse and 0.4 s to echo. The 1 MiB body cap bounds this, so the contract
   was not changed.
-- **Untested path.** The "worker died without sending a result" path is
-  logged but has no test of its own. The setup-failure test covers the
-  logging route.
+- **Untested path.** The "worker died without sending a result" path was
+  logged but had no test of its own at this point. This was closed in
+  Part 3.
+
+## Part 3 — Final pass
+
+### Prompt
+
+Main prompt (summarized):
+
+> Add a test for the worker dying without sending a result (a double that
+> kills the process, like `os._exit(1)`). Confirm nothing generated is
+> tracked by git. Rerun both suites and update TESTING.md. Finish this
+> transcript. Commit and push.
+
+### Who did what
+
+- **Sonnet subagent #3** added `tests/worker_doubles.py` and
+  `test_worker_dying_without_result_is_logged_and_hidden`.
+  - The worker is a *spawned* process, so an ordinary monkeypatch of code
+    that runs in the child would not reach it.
+  - The test instead replaces `worker._child_main`, which
+    `run_interpretation` looks up at call time, with a function in a tiny
+    importable module. Spawn pickles that function by reference, so the
+    child imports it and calls `os._exit(1)` before sending anything.
+  - Claude Code proposed this approach in the brief. No production code
+    changed.
+  - The test asserts:
+    - a bare `-32603` with id `"dead"` and no leak;
+    - the server log line `exited without a result (exitcode=1)`; exit
+      code 1 proves the double really ran in the child;
+    - the next call on the same app still succeeds.
+  - The subagent ran the test three times in a row to check it isn't
+    flaky.
+- **Claude Code**
+  - Read the new test.
+  - Ran `git ls-files MySolution`: only source and docs are tracked, with no
+    `.venv`, `__pycache__`, or caches. `.venv/` is present locally but
+    ignored, so neither `.gitignore` nor the index needed changes.
+  - Re-ran both suites: 160 passed, and 15/15 instructor tests OK.
+  - Updated the counts, item 8, and the pasted outputs in `TESTING.md`.
+  - A first attempt to splice the outputs into `TESTING.md` used a regex
+    that backtracked catastrophically and hung. It was stopped before it
+    wrote anything, and the splice was redone with plain string search.
+
+## How I reviewed it
+
+These checks were run by Claude Code at my direction. I read the results
+and outputs it reported. It did not rely on the subagents' own reports.
+
+- **Both suites, run independently.** Ran our pytest suite and the
+  instructor's black-box suite against a freshly started server, from
+  `assigns/07/`. The outputs pasted in `TESTING.md` come from those runs.
+- **Every README curl.** Ran each curl example in `README.md` against the
+  live server and pasted the real responses. All of them matched `RPC.md`.
+- **Grep for `exec`/`eval`.** Searched for `exec(`, `eval(`,
+  `literal_eval`, and the builtin `compile(`. Nothing was found apart from
+  the `compile` method names.
+- **Reading the code.** Read every server module, the worker in
+  particular. That is how the missing log for worker failures was caught,
+  even though all 158 tests were passing at the time. The fix and its tests
+  were then added.
+- **Measuring instead of assuming.** Recursion depth, `fib` timings, integer
+  digit limits, mylib sizes, and huge-integer JSON ids were all measured,
+  and the contract was written from the measurements.

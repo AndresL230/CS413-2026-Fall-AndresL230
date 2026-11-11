@@ -4,7 +4,7 @@ Two suites are run from `assigns/07/`:
 
 | Suite | Command | Needs running server? | Result |
 | --- | --- | --- | --- |
-| Ours: HTTP-level, Flask test client (`MySolution/tests/`) | `MySolution/.venv/bin/python -m pytest MySolution/tests -v` | no | **159 passed** |
+| Ours: HTTP-level, Flask test client (`MySolution/tests/`) | `MySolution/.venv/bin/python -m pytest MySolution/tests -v` | no | **160 passed** |
 | Instructor black-box (`TEST/test_rpc_api.py`) | `python3 -m unittest discover -s TEST -v` | yes: `MySolution/.venv/bin/python MySolution/server.py` | **15 tests, OK** |
 
 Environment: Python 3.14.8, Flask 3.1.3, Werkzeug 3.1.9, pytest 9.2.0
@@ -29,9 +29,12 @@ Environment: Python 3.14.8, Flask 3.1.3, Werkzeug 3.1.9, pytest 9.2.0
   compile tests call the real LAMBDA3. The compile tests also check that the
   returned code is byte-for-byte the output of
   `d0exp_compile` / `d0exp_compile_js`.
-- **Test doubles in two places only.**
+- **Test doubles for failure behavior and dispatch boundaries only.**
   - `ExplodingService` in `test_injected_failures.py` injects unexpected
     backend exceptions.
+  - `worker_doubles.die_before_reporting` replaces the worker's child entry
+    point and calls `os._exit(1)` inside the spawned process, before the
+    result is sent.
   - The spy service in `test_dispatch_boundary.py` checks dispatch
     boundaries.
 - **Timeout uses the real interpreter.** The deadline is lowered to 1 s
@@ -52,7 +55,7 @@ All tests listed below **passed** in the run recorded at the end of this file.
 | 5 | Syntax and type errors have distinct documented codes | `test_lambda_errors.py::test_syntax_error_single_line_has_position_and_snippet`, `::test_syntax_error_multi_line_reports_the_right_line`, `::test_syntax_error_snippet_is_truncated_to_200_chars`, `::test_type_error_has_detail`, `::test_syntax_and_type_error_codes_are_distinct` | `-32010` with `{line:1, column:4, snippet:"if then"}` (and line 3 for the multi-line case); `-32011` with `detail` |
 | 6 | Malformed JSON, invalid envelopes, unknown methods, absent/wrongly typed params, blank source, oversized source | `test_protocol.py` (all 23 tests: parse errors incl. non-UTF-8, NaN and deeply nested JSON; 12 invalid-envelope variants; unknown method; case-sensitive names; array/absent/null params); `test_params.py` (all 37 tests: wrong-type/blank/missing source, unknown key, bad/missing target, code points vs bytes); `test_runtime_and_limits.py::test_oversized_source_rejected_with_limit_and_actual`, `::test_deeply_nested_source_is_invalid_params_not_internal[typecheck / interpret / compile]`, `::test_long_operator_chain_is_nesting_error`; `test_transport.py` (all 18 tests: 415, 405 + `Allow`, 413, 404, 204, charset accepted) | `-32700` / `-32600` with `id: null`; `-32601` keeps the id; `-32602` with the documented `data`; oversized → `limit: 32768, actual: 32769`; deep nesting → `-32602` "source nesting too deep" (never `-32603`); transport errors use HTTP status codes with plain-text bodies |
 | 7 | A function result is formatted without leaking closure internals | `test_function_values.py::test_lam_value_is_formatted_as_lam_without_internals`, `::test_fix_value_is_formatted_as_fix_without_internals`, `::test_function_values_contain_no_closure_or_env_internals` | `<lam>` and `<fix>`; no environment or object reprs |
-| 8 | Injected backend failure or timeout returns the documented error, keeps the id, no traceback | `test_injected_failures.py::test_unexpected_failure_is_internal_error_without_data_or_leak`, `::test_unexpected_failure_traceback_is_logged_server_side`, `::test_unexpected_failure_in_compile_is_internal_error`, `::test_injected_failure_in_batch_does_not_break_other_members`; `test_worker_failures.py::test_worker_setup_failure_logs_traceback_but_hides_it`; `test_runtime_and_limits.py::test_slow_program_times_out_with_configured_seconds`, `::test_timeout_leaves_server_usable`, `::test_division_by_zero_is_runtime_error`, `::test_head_of_empty_list_is_invalid_operation`, `::test_unbounded_recursion_is_recursion_depth_exceeded_not_timeout` | `-32603` with exactly `{"code":-32603,"message":"Internal error"}` and id kept, while the traceback shows up only in the server log (`caplog`); real `fib(30)` → `-32012` `{seconds: 1}` and the server stays usable; `-32013` kinds `division_by_zero`, `invalid_operation`, `recursion_depth_exceeded` |
+| 8 | Injected backend failure or timeout returns the documented error, keeps the id, no traceback | `test_injected_failures.py::test_unexpected_failure_is_internal_error_without_data_or_leak`, `::test_unexpected_failure_traceback_is_logged_server_side`, `::test_unexpected_failure_in_compile_is_internal_error`, `::test_injected_failure_in_batch_does_not_break_other_members`; `test_worker_failures.py::test_worker_setup_failure_logs_traceback_but_hides_it`, `::test_worker_dying_without_result_is_logged_and_hidden`; `test_runtime_and_limits.py::test_slow_program_times_out_with_configured_seconds`, `::test_timeout_leaves_server_usable`, `::test_division_by_zero_is_runtime_error`, `::test_head_of_empty_list_is_invalid_operation`, `::test_unbounded_recursion_is_recursion_depth_exceeded_not_timeout` | `-32603` with exactly `{"code":-32603,"message":"Internal error"}` and id kept, while the traceback shows up only in the server log (`caplog`); a worker killed by `os._exit(1)` before reporting → the same bare `-32603` with id `"dead"`, server log `interpretation worker exited without a result (exitcode=1)`, and the next call still succeeds; real `fib(30)` → `-32012` `{seconds: 1}` and the server stays usable; `-32013` kinds `division_by_zero`, `invalid_operation`, `recursion_depth_exceeded` |
 | 9 | LAMBDA3 type-checking rejects an unbound variable | `test_lambda_errors.py::test_unbound_variable_rejected_by_typecheck`, `::test_unbound_variable_rejected_by_interpret_without_running`, `::test_unbound_variable_rejected_by_compile` | `-32011` `"unbound variable 'x'"` from all three methods |
 | 10 | Batches keep ids and omit notifications; invalid members get `id: null`; notification-only batch → empty body; empty batch → one Invalid Request; single notification → no body + documented status | `test_batch.py` (all 9 tests), `test_transport.py::test_notification_is_204_with_empty_body` | Responses matched by id (mixed string/number ids); notifications omitted, even failing ones; invalid members → `-32600` `id: null`; notification-only → `204` empty; `[]` → a single `-32600` object; single notification → `204` empty |
 
@@ -130,7 +133,7 @@ The `[ nn%]` progress column was removed. Everything else is verbatim.
 platform linux -- Python 3.14.8, pytest-9.2.0, pluggy-1.7.0 -- /home/andresl/Desktop/Courses/Fall 2026/CS 413/CS413-2026-Fall/assigns/07/MySolution/.venv/bin/python
 rootdir: /home/andresl/Desktop/Courses/Fall 2026/CS 413/CS413-2026-Fall/assigns/07/MySolution
 configfile: pytest.ini
-collecting ... collected 159 items
+collecting ... collected 160 items
 
 MySolution/tests/test_batch.py::test_batch_matches_by_id_with_mixed_id_types_and_omits_notification PASSED
 MySolution/tests/test_batch.py::test_batch_invalid_members_get_null_id_alongside_valid_results PASSED
@@ -291,8 +294,9 @@ MySolution/tests/test_typecheck.py::test_typecheck_valid_program_returns_formatt
 MySolution/tests/test_typecheck.py::test_typecheck_valid_program_returns_formatted_type[list] PASSED
 MySolution/tests/test_typecheck.py::test_typecheck_accepts_source_of_exactly_max_size PASSED
 MySolution/tests/test_worker_failures.py::test_worker_setup_failure_logs_traceback_but_hides_it PASSED
+MySolution/tests/test_worker_failures.py::test_worker_dying_without_result_is_logged_and_hidden PASSED
 
-============================= 159 passed in 8.23s ==============================
+============================= 160 passed in 6.95s ==============================
 ```
 
 ### Instructor suite (unittest, against the running server)
@@ -318,7 +322,7 @@ test_notification_only_batch_has_no_response (test_rpc_api.JsonRpcContractTests.
 test_typecheck_arithmetic (test_rpc_api.JsonRpcContractTests.test_typecheck_arithmetic) ... ok
 
 ----------------------------------------------------------------------
-Ran 15 tests in 0.928s
+Ran 15 tests in 0.679s
 
 OK
 ```
