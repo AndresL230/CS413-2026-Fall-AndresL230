@@ -7,10 +7,9 @@ batches to a browser client, which animates them.
 
 The design is in [`DESIGN.md`](DESIGN.md), which covers continuation
 conventions, the event schema, stream lifetime, and the architecture
-diagram.
-
-> **Status:** the solver, the bridge, and the RPC service are done. The
-> browser client at `GET /` is a placeholder for now.
+diagram. [`TESTING.md`](TESTING.md) maps each required test to test names
+and observed results. [`AI-TRANSCRIPT.md`](AI-TRANSCRIPT.md) records how
+AI was used and how the work was reviewed.
 
 ## Versions
 
@@ -20,6 +19,7 @@ diagram.
 | Flask | 3.1.3 |
 | Werkzeug | 3.1.9 |
 | pytest | 9.2.0 |
+| Node.js (client tests only) | 18 or later for `node --test` (tested on 26.12.1); no npm packages |
 
 All dependencies are pinned in [`requirements.txt`](requirements.txt). The
 supplied interpreter is imported from `../LAMBDA3/lambda3.py`, unmodified.
@@ -39,8 +39,14 @@ MySolution/
     jsonrpc.py         envelope validation, ids, batches, notifications (from Assign07)
     transport.py       Flask: POST /rpc, GET /, /static/*
     errors.py, config.py, lambda3_loader.py
-  static/              browser client (placeholder index.html for now)
-  tests/               pytest suite
+  static/
+    index.html, app.css  page and styles (no CDN, fonts, or external assets)
+    rpc.js             JSON-RPC transport (injectable fetch)
+    player.js          playback state + pure helpers (no DOM)
+    render.js          DOM renderer
+    main.js            wiring: controls -> player -> renderer
+  tests/               pytest suite; tests/js/ holds the node --test client tests
+  package.json         only marks the JS files as ES modules for node; no dependencies
 ```
 
 ## Setup
@@ -55,7 +61,8 @@ MySolution/.venv/bin/pip install -r MySolution/requirements.txt
 ## Tests
 
 ```sh
-MySolution/.venv/bin/python -m pytest MySolution -v
+MySolution/.venv/bin/python -m pytest MySolution -v      # solver, laziness, service, HTTP e2e
+node --test MySolution/tests/js/                          # browser client (transport + player)
 ```
 
 The whole suite takes about 35 seconds. Most of that is spent consuming
@@ -75,8 +82,44 @@ MySolution/.venv/bin/python -m pytest MySolution -v -k "rpc"                  # 
 MySolution/.venv/bin/python MySolution/server.py
 ```
 
-The page is at http://127.0.0.1:8000/, and the RPC endpoint is
+Then open **http://127.0.0.1:8000/** in a browser. The RPC endpoint is
 `POST http://127.0.0.1:8000/rpc`. Stop the server with Ctrl-C.
+
+## Controls
+
+| Control | What it does |
+| --- | --- |
+| **Board** select | Board size from 4×4 to 10×10 (default 8×8). Changing it resets the search. |
+| **Start** | Opens a new search stream for the selected size. If a search is already open, it is closed first. |
+| **Step** | Shows the next event. |
+| **Play / Pause** | Animates events at the chosen speed, or stops. |
+| **Next solution** | Fast-forwards in batches of 32 events without drawing each step, then draws the next solution. If the search runs out first, it shows the done state instead. |
+| **Reset** | Closes the stream on the server and clears the board. |
+| **Speed** slider | 1 to 60 events per second during Play. |
+| **Restart** | Shown in the "Search complete" banner after `done`. Starts the same size again. |
+
+What each cell means:
+
+| Look | Event |
+| --- | --- |
+| Dashed blue outline | `try`: the candidate square |
+| Green queen with a pop animation | `place` |
+| Red square with ✕ and a red ring on the attacking queen | `reject`; the attacker is found from the board snapshot |
+| Fading amber queen | `backtrack` |
+| Whole board glowing gold | `solution` |
+| Greyed-out board with a dark "Search complete" banner | `done` |
+
+The page also shows:
+
+- A status line.
+- Counters for solutions found, events, and RPC fetches.
+- An event log with the newest event first and the last 200 kept.
+
+The page asks for events only when its buffer runs low (4 left), 16 at a
+time, or 32 at a time while fast-forwarding. It never downloads the whole
+trace. Network and RPC failures appear in a red banner and stop playback;
+press Start to recover. Leaving the page sends `queens.close` as a
+keepalive notification.
 
 ## RPC examples (curl)
 
@@ -159,6 +202,9 @@ HTTP status codes:
   id.
 
 ## Limitations
+
+- The page needs a reasonably modern browser: ES modules, `fetch` with
+  `keepalive`, and the CSS `aspect-ratio` property.
 
 - The tree-walking interpreter manages about 3,500 events per second. A
   full 8×8 trace takes about 10 s; 9×9 takes about 50 s and 10×10 about

@@ -370,13 +370,17 @@ external resources. Responsibilities are separated so each can be tested:
 - `rpc.js`, **transport**: `RpcClient` with `open`, `next`, `close`. It
   takes an injectable `fetch`, throws `RpcFailure` on network, HTTP, or
   JSON-RPC errors, and holds no UI state.
-- `player.js`, **playback state**: an event queue, with refills of up to 32
-  events when the queue runs low (never the whole trace), plus `step`,
-  `play`, `pause`, `nextSolution`, `reset`, and counters (events, solutions,
-  done). It is driven by a timer the tests can inject.
-- `render.js`, **rendering**: a pure function from board state plus the
-  current event to the DOM. It works out the attacking queen for `reject`
-  from the board snapshot (same column or diagonal, nearest row first).
+- `player.js`, **playback state**: an event buffer that is refilled only
+  when 4 or fewer events remain, 16 at a time for step/play and 32 at a
+  time for next solution, and never the whole trace. It provides `step`,
+  `play`, `pause`, `nextSolution`, and `reset`, plus counters (events,
+  solutions, fetches). It is driven by a timer the tests can inject, and it
+  holds pure helpers (`applyEvent`, `boardView`, `attackerOf`,
+  `controlsFor`, `statusText`).
+- `render.js`, **rendering**: DOM updates only. It turns the player's
+  snapshot into board cells, status, counters, log, and button states. The
+  attacking queen for `reject` comes from `attackerOf`, which checks the
+  board snapshot for the same column or diagonal, nearest row first.
 - `main.js`: wiring for the controls, the size selector (4–10, default 8),
   the speed slider, the status line, the event log, and the error banner.
 
