@@ -1,0 +1,9 @@
+{
+  "name": "queens-client-tests",
+  "private": true,
+  "type": "module",
+  "description": "Marks static/*.js and tests/js/*.js as ES modules for node --test. No dependencies.",
+  "scripts": {
+    "test": "node --test tests/js/"
+  }
+}

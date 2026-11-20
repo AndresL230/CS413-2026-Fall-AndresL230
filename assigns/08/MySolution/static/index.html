@@ -4,9 +4,62 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>N-Queens Search</title>
+  <link rel="stylesheet" href="/static/app.css">
 </head>
 <body>
-  <h1>N-Queens Search</h1>
-  <p>Placeholder: the animated client is not built yet. The JSON-RPC endpoint is <code>POST /rpc</code>.</p>
+  <main>
+    <header>
+      <h1>N-Queens Search</h1>
+      <p class="sub">A CPS backtracking search in LAMBDA3, streamed one event at a time.</p>
+    </header>
+
+    <section class="controls" aria-label="Controls">
+      <label>Board
+        <select id="size">
+          <option value="4">4×4</option><option value="5">5×5</option><option value="6">6×6</option>
+          <option value="7">7×7</option><option value="8" selected>8×8</option><option value="9">9×9</option>
+          <option value="10">10×10</option>
+        </select>
+      </label>
+      <button id="btn-start" type="button">Start</button>
+      <button id="btn-step" type="button">Step</button>
+      <button id="btn-play" type="button" aria-pressed="false">Play</button>
+      <button id="btn-next" type="button">Next solution</button>
+      <button id="btn-reset" type="button">Reset</button>
+      <label class="speed">Speed
+        <input id="speed" type="range" min="1" max="60" value="8">
+        <span id="speed-value"></span>
+      </label>
+    </section>
+
+    <p id="status" role="status" aria-live="polite"></p>
+    <p id="error" role="alert" hidden></p>
+    <div id="done-banner" hidden>
+      <span id="done-text"></span>
+      <button id="btn-restart" type="button">Restart</button>
+    </div>
+
+    <div class="layout">
+      <div id="board" role="grid" aria-label="Chessboard"></div>
+      <aside>
+        <dl class="counts">
+          <div><dt>Solutions found</dt><dd id="count-solutions">0</dd></div>
+          <div><dt>Events</dt><dd id="count-events">0</dd></div>
+          <div><dt>RPC fetches</dt><dd id="count-requests">0</dd></div>
+        </dl>
+        <ul class="legend" aria-label="Legend">
+          <li><span class="swatch try">♛</span> try</li>
+          <li><span class="swatch queen placed">♛</span> place</li>
+          <li><span class="swatch reject">♛</span> reject</li>
+          <li><span class="swatch queen attacker">♛</span> attacker</li>
+          <li><span class="swatch backtrack">♛</span> backtrack</li>
+          <li><span class="swatch queen solution">♛</span> solution</li>
+        </ul>
+        <h2>Event log</h2>
+        <ol id="log" reversed aria-live="off"></ol>
+      </aside>
+    </div>
+  </main>
+  <script type="module" src="/static/main.js"></script>
 </body>
 </html>
