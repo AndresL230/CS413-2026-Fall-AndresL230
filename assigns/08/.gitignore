@@ -1,0 +1,4 @@
+# Python caches anywhere under assigns/08 (LAMBDA3/ included)
+__pycache__/
+*.py[cod]
+.pytest_cache/

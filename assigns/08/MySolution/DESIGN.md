@@ -322,6 +322,9 @@ Forces at most `limit` cells. If it reaches `done`, it stops there and sets
 
 `-32020` and `-32021` are application codes in the server-error range.
 Responses never contain tracebacks, file paths, or interpreter values.
+`stream_id` must be a string of 1 to 64 characters; anything else is
+`-32602`. A well-formed id that is not in the table is `-32020`. Request
+bodies over 64 KiB get HTTP 413.
 
 ### Batches
 

@@ -58,3 +58,46 @@ def applies(monkeypatch):
     solver.declarations()
     solver._entry_closure()  # warm the caches before counting
     return ApplyCounter(monkeypatch)
+
+
+# ---- Service fixtures ---------------------------------------------------------
+
+from queens.transport import create_app  # noqa: E402
+from rpchelpers import FakeClock, Rpc  # noqa: E402
+
+
+@pytest.fixture
+def clock():
+    return FakeClock()
+
+
+@pytest.fixture
+def make_app(clock):
+    def factory(overrides=None, open_stream=None):
+        app = create_app(overrides, clock=clock, open_stream=open_stream)
+        app.testing = True
+        return app
+
+    return factory
+
+
+@pytest.fixture
+def app(make_app):
+    return make_app()
+
+
+@pytest.fixture
+def table(app):
+    return app.extensions["streams"]
+
+
+@pytest.fixture
+def rpc(app):
+    return Rpc(app.test_client())
+
+
+@pytest.fixture
+def error_log(caplog):
+    import logging
+    with caplog.at_level(logging.ERROR, logger="queens"):
+        yield caplog
