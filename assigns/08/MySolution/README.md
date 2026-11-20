@@ -174,7 +174,7 @@ objects are described in DESIGN.md §7.
 | `-32602` | Invalid params | a parameter is missing, unknown, of the wrong type, or out of range; positional params are rejected | `{"param", "reason"}` |
 | `-32603` | Internal error | unexpected failure; logged on the server, and the stream is discarded | none |
 | `-32020` | Unknown stream | the stream id was never issued, was closed, or expired | `{"stream_id"}` |
-| `-32021` | Too many streams | 256 streams (live or exhausted) are already open | `{"limit": 256}` |
+| `-32021` | Too many streams | 256 live (not yet exhausted) streams are already open | `{"limit": 256}` |
 
 HTTP status codes:
 
@@ -195,7 +195,9 @@ HTTP status codes:
 - **Inactivity lifetime:** 600 seconds (10 minutes) per stream id, for live
   streams and exhausted markers alike. Expired ids are removed whenever any
   stream method runs, and then return `-32020`.
-- **Open streams:** at most 256. Exhausted markers count toward this.
+- **Open streams:** at most 256 live streams. Exhausted markers do not
+  count toward this; they hold no solver state and are removed by close or
+  expiry.
 - **Batches** run sequentially in array order against the same stream
   table, so two `next` calls on one id return consecutive slices.
 - **Process-local state:** restarting the server invalidates every stream

@@ -7,7 +7,7 @@ HOST = "127.0.0.1"
 PORT = 8000
 MAX_CONTENT_LENGTH = 64 * 1024     # request body bytes
 STREAM_TTL_SECONDS = 600           # inactivity lifetime of a stream id
-MAX_STREAMS = 256                  # live streams + exhausted markers
+MAX_STREAMS = 256                  # live streams; exhausted markers do not count
 MAX_LIMIT = 32                     # events per queens.next
 STREAM_ID_MAX_CHARS = 64
 

@@ -122,10 +122,24 @@ def test_cap_of_256_streams(rpc, table, applies):
     rpc.open(8)                  # a freed slot can be reused
 
 
-def test_cap_counts_exhausted_markers_and_frees_on_expiry(make_app, clock):
+def test_exhausted_markers_do_not_count_toward_cap(rpc, table):
+    live = [rpc.open(8) for _ in range(255)]
+    marker = rpc.open(4)
+    rpc.drain(marker)                        # 255 live + 1 exhausted marker
+    extra = rpc.open(8)                      # the marker frees its slot: 256 live
+    err = rpc.err("queens.open", {"size": 8}, TOO_MANY_STREAMS)
+    assert err["data"] == {"limit": 256}
+    assert len(table) == 257                 # the marker is still in the table...
+    assert rpc.next(marker, 32) == {"events": [], "done": True}  # ...and still answers
+    rpc.ok("queens.close", {"stream_id": live[0]})
+    rpc.open(8)
+    assert extra != marker
+
+
+def test_live_cap_frees_on_expiry(make_app, clock):
     from rpchelpers import Rpc
     rpc = Rpc(make_app({"MAX_STREAMS": 2}).test_client())
-    rpc.drain(rpc.open(4))
+    rpc.open(8)
     rpc.open(8)
     rpc.err("queens.open", {"size": 8}, TOO_MANY_STREAMS)
     clock.advance(600)

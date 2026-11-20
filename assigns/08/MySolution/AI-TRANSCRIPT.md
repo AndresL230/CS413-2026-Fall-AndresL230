@@ -204,6 +204,48 @@ Then TESTING.md, this file, and README updates.
   claim that the close on size-change was seen in the server log. That
   close is covered by a node test instead.
 
+## Prompt 6: cap change, UI cleanup, final check
+
+**Prompt (summary):** Exhausted markers should not count toward the
+256-stream cap, only live streams; fix it and add a test. Then clean up the
+UI:
+
+- one system-ui font in 2–3 sizes;
+- a neutral background with one accent color and muted event colors;
+- a spacing grid, with the controls in one row;
+- square cells with thin borders and big centered queens;
+- a fixed-height monospace log;
+- same-size buttons, with disabled ones clearly disabled.
+
+Finally, clone fresh into a temp dir and run the README setup and tests
+there, check that nothing is tracked that shouldn't be, commit and push,
+and start the server from my repo.
+
+**Who did what:**
+
+- Claude wrote the cap test first, at the real limit (255 live streams
+  plus one exhausted marker, then one more open must succeed and the
+  257th live one must fail). It confirmed the test failed against the old
+  code, then counted only live entries in `StreamTable.open`. It also
+  updated README, DESIGN, and TESTING.
+  - Trade-off noted in DESIGN: markers are now bounded only by expiry and
+    close, not by the cap. They hold no solver state.
+- The CSS was rewritten around tokens:
+  - font sizes 12/14/20 px (plus queen glyphs sized to the cell);
+  - an 8 px spacing scale and one accent color (`#3b5b8c`);
+  - muted event colors and 112 px × 36 px buttons;
+  - disabled buttons grey and dashed;
+  - the board drawn as a 1 px-gap grid.
+
+  The markup was tidied; every element id stayed the same, so the tests
+  and `render.js` did not change.
+- **Checked in Chrome:** two layout problems were found and fixed:
+  - The speed control wrapped onto a second row.
+  - "Next solution" wrapped inside a narrower button.
+
+  After the fixes, the controls sit on one row, all five buttons measure
+  the same, and the computed font sizes are exactly 20/14/12 px.
+
 ## How the work was reviewed
 
 - **Checkpoints:** I approved each step before it started (orientation,
@@ -227,4 +269,4 @@ Then TESTING.md, this file, and README updates.
 - **Commands** in README and TESTING were run from `assigns/08/` exactly
   as written.
 
-Final results: pytest 146 passed, `node --test` 33 passed.
+Final results: pytest 147 passed, `node --test` 33 passed.

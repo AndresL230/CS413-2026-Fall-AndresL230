@@ -58,13 +58,19 @@ class StreamTable:
             entry.last_used = now
             return entry
 
+    def live_count(self):
+        """Streams still holding solver state. Caller holds self._lock.
+        Exhausted markers (stream is None) do not count toward the cap;
+        they are tiny and are removed by close or expiry."""
+        return sum(1 for e in self._entries.values() if e.stream is not None)
+
     def open(self, size):
         """Allocate a stream. The size must already be validated by the caller.
-        The cap is checked before the solver is touched."""
+        The cap (live streams only) is checked before the solver is touched."""
         with self._lock:
             now = self._clock()
             self._sweep(now)
-            if len(self._entries) >= self.cap:
+            if self.live_count() >= self.cap:
                 raise TooManyStreams(self.cap)
             stream_id = str(uuid.uuid4())
             self._entries[stream_id] = _Entry(self._open_stream(size), now)

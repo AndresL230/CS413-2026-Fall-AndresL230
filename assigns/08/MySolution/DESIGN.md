@@ -318,7 +318,7 @@ Forces at most `limit` cells. If it reaches `done`, it stops there and sets
 | `-32602` | Invalid params | missing, unknown, or ill-typed parameter, or value out of range | `{"param", "reason"}` |
 | `-32603` | Internal error | unexpected failure (logged on the server, never returned) | — |
 | `-32020` | Unknown stream | id never issued, closed, or expired | `{"stream_id"}` (truncated) |
-| `-32021` | Too many streams | 256 streams already open | `{"limit": 256}` |
+| `-32021` | Too many streams | 256 live streams already open | `{"limit": 256}` |
 
 `-32020` and `-32021` are application codes in the server-error range.
 Responses never contain tracebacks, file paths, or interpreter values.
@@ -354,9 +354,11 @@ default).
 - **Expiry.** An entry (live or marker) not used for **600 seconds**
   (10 minutes) expires. Expired entries are swept at the start of every
   stream method. After that the id returns `-32020`.
-- **Cap.** At most **256** entries (live or markers) exist at once.
-  `open` sweeps expired entries first, then fails with `-32021` if the
-  table is still full. `open` validates `size` before allocating anything.
+- **Cap.** At most **256 live** streams (entries that still hold an
+  `EventStream`) exist at once. Exhausted markers do not count toward the
+  cap: they hold no solver state and disappear on close or expiry. `open`
+  sweeps expired entries first, then fails with `-32021` if 256 live
+  streams remain. `open` validates `size` before allocating anything.
 - **Failure inside the solver.** If forcing raises (which should not
   happen), the entry is removed, the error is logged, and the client gets
   `-32603`.
@@ -418,7 +420,7 @@ highlighted).
  │        ▼                                                          │
  │  methods.py: validate params ──► streams.StreamTable              │
  │                                   { uuid → lock, EventStream,     │
- │                                     last_used }  TTL 600s, ≤256   │
+ │                                     last_used }  TTL 600s, ≤256 live│
  └───────────────────────────────────────┼───────────────────────────┘
                                          │ next(): force one cell
                                          ▼

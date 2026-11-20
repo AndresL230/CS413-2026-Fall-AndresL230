@@ -7,56 +7,64 @@
   <link rel="stylesheet" href="/static/app.css">
 </head>
 <body>
-  <main>
-    <header>
+  <main class="page">
+    <header class="head">
       <h1>N-Queens Search</h1>
-      <p class="sub">A CPS backtracking search in LAMBDA3, streamed one event at a time.</p>
+      <p class="muted">A CPS backtracking search in LAMBDA3, streamed one event at a time.</p>
     </header>
 
-    <section class="controls" aria-label="Controls">
-      <label>Board
+    <section class="toolbar" aria-label="Controls">
+      <label class="field">
+        <span class="label">Board</span>
         <select id="size">
           <option value="4">4×4</option><option value="5">5×5</option><option value="6">6×6</option>
           <option value="7">7×7</option><option value="8" selected>8×8</option><option value="9">9×9</option>
           <option value="10">10×10</option>
         </select>
       </label>
-      <button id="btn-start" type="button">Start</button>
-      <button id="btn-step" type="button">Step</button>
-      <button id="btn-play" type="button" aria-pressed="false">Play</button>
-      <button id="btn-next" type="button">Next solution</button>
-      <button id="btn-reset" type="button">Reset</button>
-      <label class="speed">Speed
+      <div class="buttons">
+        <button id="btn-start" class="primary" type="button">Start</button>
+        <button id="btn-step" type="button">Step</button>
+        <button id="btn-play" type="button" aria-pressed="false">Play</button>
+        <button id="btn-next" type="button">Next solution</button>
+        <button id="btn-reset" type="button">Reset</button>
+      </div>
+      <label class="field speed">
+        <span class="label">Speed</span>
         <input id="speed" type="range" min="1" max="60" value="8">
-        <span id="speed-value"></span>
+        <span id="speed-value" class="muted"></span>
       </label>
     </section>
 
-    <p id="status" role="status" aria-live="polite"></p>
-    <p id="error" role="alert" hidden></p>
-    <div id="done-banner" hidden>
-      <span id="done-text"></span>
-      <button id="btn-restart" type="button">Restart</button>
+    <div class="messages">
+      <p id="status" role="status" aria-live="polite"></p>
+      <p id="error" role="alert" hidden></p>
+      <div id="done-banner" hidden>
+        <span id="done-text"></span>
+        <button id="btn-restart" class="primary" type="button">Restart</button>
+      </div>
     </div>
 
     <div class="layout">
       <div id="board" role="grid" aria-label="Chessboard"></div>
-      <aside>
+      <aside class="side">
         <dl class="counts">
           <div><dt>Solutions found</dt><dd id="count-solutions">0</dd></div>
           <div><dt>Events</dt><dd id="count-events">0</dd></div>
           <div><dt>RPC fetches</dt><dd id="count-requests">0</dd></div>
         </dl>
         <ul class="legend" aria-label="Legend">
-          <li><span class="swatch try">♛</span> try</li>
-          <li><span class="swatch queen placed">♛</span> place</li>
-          <li><span class="swatch reject">♛</span> reject</li>
-          <li><span class="swatch queen attacker">♛</span> attacker</li>
-          <li><span class="swatch backtrack">♛</span> backtrack</li>
-          <li><span class="swatch queen solution">♛</span> solution</li>
+          <li><span class="swatch try">♛</span>try</li>
+          <li><span class="swatch placed">♛</span>place</li>
+          <li><span class="swatch reject">♛</span>reject</li>
+          <li><span class="swatch attacker">♛</span>attacker</li>
+          <li><span class="swatch backtrack">♛</span>backtrack</li>
+          <li><span class="swatch solution">♛</span>solution</li>
         </ul>
-        <h2>Event log</h2>
-        <ol id="log" reversed aria-live="off"></ol>
+        <section class="log-panel">
+          <h2>Event log</h2>
+          <ol id="log" aria-live="off"></ol>
+        </section>
       </aside>
     </div>
   </main>
